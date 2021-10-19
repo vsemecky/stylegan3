@@ -6,6 +6,17 @@
 - easy restart settings (set initial augment strength using `--initstrength`)
 - option to mirror dataset vertically (`--mirrory`)
 - brought back option to disable color augmentations (`--augpipe=bg`)
+- DynamicDataset - alternative to default ImageFolderDataset (`--dd`, `--dd-res`, `--dd-crop`)
+
+### Dynamic Dataset
+
+### Features
+- **Uses raw images** - they don't have to be the same size. You don't need to use `dataset_tool.py` before training. Just take the images as they are and put them into single directory or zip file.
+- Images are cropped to the requested size (e.g. `--dd-res=1024`) on the fly.
+- Either **center crop** or **random crop** is available (`--dd-crop=center`, `--dd-crop=random`)
+- Using **random crop** the image is cropped differently each time it is used, which leads to to additional augmentation. 
+
+- @todo Support for conditional training
 
 ## Alias-Free Generative Adversarial Networks (StyleGAN3)<br><sub>Official PyTorch implementation of the NeurIPS 2021 paper</sub>
 
