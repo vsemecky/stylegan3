@@ -107,7 +107,7 @@ def init_dataset_kwargs(opts):
                 class_name='training.dataset_dynamic.DynamicDataset',
                 path=opts.data,
                 resolution=opts.dd_res,
-                crop=opts.crop)
+                crop=opts.dd_crop)
         else:
             # original dataset
             dataset_kwargs = dnnlib.EasyDict(class_name='training.dataset.ImageFolderDataset', path=opts.data, use_labels=True, max_size=None, xflip=False)
