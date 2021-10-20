@@ -3,6 +3,7 @@ import random
 import numpy as np
 import PIL.Image
 import PIL.ImageOps
+import PIL.ImageFile
 from training.dataset import ImageFolderDataset
 
 
@@ -15,6 +16,8 @@ class DynamicDataset(ImageFolderDataset):
 
         if resolution is None:
             raise IOError('Resolution must be explicitly set when using Dynamic Dataset, e.g. --dd-res=1024')
+
+        PIL.ImageFile.LOAD_TRUNCATED_IMAGES = True
 
         super().__init__(path=path, resolution=resolution, **super_kwargs)
 
