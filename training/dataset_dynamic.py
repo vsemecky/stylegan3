@@ -9,9 +9,10 @@ from training.dataset import ImageFolderDataset
 
 class DynamicDataset(ImageFolderDataset):
 
-    def __init__(self, path, resolution=None, crop="center", **super_kwargs):
+    def __init__(self, path, resolution=None, crop="center", use_labels=False, **super_kwargs):
         self._resolution = resolution
         self._crop = crop
+        self._use_labels = use_labels
         self._size = (resolution, resolution)
 
         if resolution is None:
@@ -41,3 +42,22 @@ class DynamicDataset(ImageFolderDataset):
 
         image_np = image_np.transpose(2, 0, 1)  # HWC => CHW
         return image_np
+
+    def _load_raw_labels(self):
+        if not self._use_labels:
+            return None
+
+        fname = 'dataset.json'
+        if fname not in self._all_fnames:
+            return None
+        with self._open_file(fname) as f:
+            labels = json.load(f)['labels']
+        if labels is None:
+            return None
+        labels = dict(labels)
+        labels = [labels[fname.replace('\\', '/')] for fname in self._image_fnames]
+        labels = np.array(labels)
+        labels = labels.astype({1: np.int64, 2: np.float32}[labels.ndim])
+        return labels
+
+#----------------------------------------------------------------------------
