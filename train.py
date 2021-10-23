@@ -100,9 +100,20 @@ def launch_training(c, desc, outdir, dry_run):
 
 #----------------------------------------------------------------------------
 
-def init_dataset_kwargs(data):
+def init_dataset_kwargs(opts):
     try:
-        dataset_kwargs = dnnlib.EasyDict(class_name='training.dataset.ImageFolderDataset', path=data, use_labels=True, max_size=None, xflip=False)
+        if opts.dd:
+            # Dynamic Dataset
+            dataset_kwargs = dnnlib.EasyDict(
+                class_name='training.dataset_dynamic.DynamicDataset',
+                path=opts.data,
+                use_labels=opts.cond,
+                resolution=opts.dd_res,
+                crop=opts.dd_crop)
+        else:
+            # original dataset
+            dataset_kwargs = dnnlib.EasyDict(class_name='training.dataset.ImageFolderDataset', path=opts.data, use_labels=True, max_size=None, xflip=False)
+
         dataset_obj = dnnlib.util.construct_class_by_name(**dataset_kwargs) # Subclass of training.dataset.Dataset.
         dataset_kwargs.resolution = dataset_obj.resolution # Be explicit about resolution.
         dataset_kwargs.use_labels = dataset_obj.has_labels # Be explicit about labels.
@@ -164,6 +175,11 @@ def locate_latest_pkl(outdir: str):
 @click.option('--map-depth',    help='Mapping network depth  [default: varies]', metavar='INT', type=click.IntRange(min=1))
 @click.option('--mbstd-group',  help='Minibatch std group size', metavar='INT',                 type=click.IntRange(min=1), default=4, show_default=True)
 
+# Dynamic Dataset options
+@click.option('--dd',           help='Use DynamicDataset instead of ImageFolderDataset',        is_flag=True)
+@click.option('--dd-res',       help='Image resolution (e.g. 1024, 512 or 256 px)',             type=int, default=1024, show_default=True)
+@click.option('--dd-crop',      help='Cropping type',                                           type=click.Choice(['center', 'random']), default="center", show_default=True)
+
 # Misc settings.
 @click.option('--desc',         help='String to include in result dir name', metavar='STR',     type=str)
 @click.option('--metrics',      help='Quality metrics', metavar='[NAME|A,B,C|none]',            type=parse_comma_separated_list, default='fid50k_full', show_default=True)
@@ -210,7 +226,8 @@ def main(**kwargs):
     c.data_loader_kwargs = dnnlib.EasyDict(pin_memory=True, prefetch_factor=2)
 
     # Training set.
-    c.training_set_kwargs, dataset_name = init_dataset_kwargs(data=opts.data)
+    c.training_set_kwargs, dataset_name = init_dataset_kwargs(opts=opts)
+
     if opts.cond and not c.training_set_kwargs.use_labels:
         raise click.ClickException('--cond=True requires labels specified in dataset.json')
     c.training_set_kwargs.use_labels = opts.cond
