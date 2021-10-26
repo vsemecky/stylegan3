@@ -9,11 +9,13 @@ from training.dataset import ImageFolderDataset
 
 class DynamicDataset(ImageFolderDataset):
 
-    def __init__(self, path, resolution=None, crop="center", use_labels=False, **super_kwargs):
+    def __init__(self, path, resolution=None, crop="center", autocontrast_probability=0, autocontrast_max_cutoff=0, use_labels=False, **super_kwargs):
         self._resolution = resolution
         self._crop = crop
         self._use_labels = use_labels
-        self._size = (resolution, resolution)
+        self._size = (resolution, resolution)  # (width, height)
+        self._autocontrast_probability = autocontrast_probability
+        self._autocontrast_max_cutoff = autocontrast_max_cutoff
 
         if resolution is None:
             raise IOError('Resolution must be explicitly set when using Dynamic Dataset, e.g. --dd-res=1024')
@@ -25,12 +27,20 @@ class DynamicDataset(ImageFolderDataset):
     def _load_raw_image(self, raw_idx):
         fname = self._image_fnames[raw_idx]
         with self._open_file(fname) as f:
+
+            image_pil = PIL.Image.open(f).convert('RGB')
+
+            # Autocontrast
+            if random.random() < self._autocontrast_probability:
+                cutoff = random.uniform(0, self._autocontrast_max_cutoff)
+                image_pil = PIL.ImageOps.autocontrast(image_pil, cutoff=cutoff, preserve_tone=True)
+
+            # Calc centering
             if self._crop == "center":
                 centering = (0.5, 0.5)  # Center crop
             else:
                 centering = (random.uniform(0, 1), random.uniform(0, 1))  # Random crop
 
-            image_pil = PIL.Image.open(f).convert('RGB')
             image_pil = PIL.ImageOps.fit(
                 image_pil,
                 size=self._size,

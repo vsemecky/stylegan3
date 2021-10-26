@@ -109,7 +109,10 @@ def init_dataset_kwargs(opts):
                 path=opts.data,
                 use_labels=opts.cond,
                 resolution=opts.dd_res,
-                crop=opts.dd_crop)
+                crop=opts.dd_crop,
+                autocontrast_probability=opts.dd_ac,
+                autocontrast_max_cutoff=opts.dd_ac_max_cutoff,
+            )
         else:
             # original dataset
             dataset_kwargs = dnnlib.EasyDict(class_name='training.dataset.ImageFolderDataset', path=opts.data, use_labels=True, max_size=None, xflip=False)
@@ -179,6 +182,8 @@ def locate_latest_pkl(outdir: str):
 @click.option('--dd',           help='Use DynamicDataset instead of ImageFolderDataset',        is_flag=True)
 @click.option('--dd-res',       help='Image resolution (e.g. 1024, 512 or 256 px)',             type=int, default=1024, show_default=True)
 @click.option('--dd-crop',      help='Cropping type',                                           type=click.Choice(['center', 'random']), default="center", show_default=True)
+@click.option("--dd-ac",        help="Autocontrast probability [0..1] (default: %(default)s)", default=0, type=float)
+@click.option("--dd-ac-max-cutoff", help="Maximum percent to cut off from the histogram [0..100] (default: %(default)s)", default=0, type=float)
 
 # Misc settings.
 @click.option('--desc',         help='String to include in result dir name', metavar='STR',     type=str)
