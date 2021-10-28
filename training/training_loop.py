@@ -22,6 +22,7 @@ from torch_utils import misc
 from torch_utils import training_stats
 from torch_utils.ops import conv2d_gradfix
 from torch_utils.ops import grid_sample_gradfix
+from moviepy.editor import ImageClip, concatenate_videoclips
 
 import legacy
 from metrics import metric_main
@@ -84,6 +85,26 @@ def save_image_grid(img, fname, drange, grid_size):
         PIL.Image.fromarray(img[:, :, 0], 'L').save(fname)
     if C == 3:
         PIL.Image.fromarray(img, 'RGB').save(fname)
+
+#----------------------------------------------------------------------------
+
+def get_image_grid(img, drange, grid_size):
+    lo, hi = drange
+    img = np.asarray(img, dtype=np.float32)
+    img = (img - lo) * (255 / (hi - lo))
+    img = np.rint(img).clip(0, 255).astype(np.uint8)
+
+    gw, gh = grid_size
+    _N, C, H, W = img.shape
+    img = img.reshape([gh, gw, C, H, W])
+    img = img.transpose(0, 3, 1, 4, 2)
+    img = img.reshape([gh * H, gw * W, C])
+
+    assert C in [1, 3]
+    if C == 1:
+        return PIL.Image.fromarray(img[:, :, 0], 'L')
+    if C == 3:
+        return PIL.Image.fromarray(img, 'RGB')
 
 #----------------------------------------------------------------------------
 
@@ -220,6 +241,22 @@ def training_loop(
         print('Exporting sample images...')
         grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
         save_image_grid(images, os.path.join(run_dir, 'reals.jpg'), drange=[0,255], grid_size=grid_size)
+
+        # Generate reals-dynamic.mp4 (for DynamicDataset only)
+        if training_set_kwargs['class_name'] == 'training.dataset_dynamic.DynamicDataset':
+            print('Exporting reals-dynamic.mp4 for DynamicDataset...')
+            image_clips = []
+            for i in range(0, 120):  # 60 frames
+                grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
+                image_pil = get_image_grid(images, drange=[0, 255], grid_size=grid_size)
+                image_clip = ImageClip(np.array(image_pil)).resize(height=1080).set_duration(0.5)
+                image_clips.append(image_clip)
+
+            concatenate_videoclips(image_clips).write_videofile(
+                filename=os.path.join(run_dir, 'reals-dynamic.mp4'),
+                fps=12
+            )
+
         grid_z = torch.randn([labels.shape[0], G.z_dim], device=device).split(batch_gpu)
         grid_c = torch.from_numpy(labels).to(device).split(batch_gpu)
         images = torch.cat([G_ema(z=z, c=c, noise_mode='const').cpu() for z, c in zip(grid_z, grid_c)]).numpy()
