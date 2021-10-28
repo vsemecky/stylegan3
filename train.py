@@ -110,8 +110,8 @@ def init_dataset_kwargs(opts):
                 use_labels=opts.cond,
                 resolution=opts.dd_res,
                 crop=opts.dd_crop,
-                autocontrast_probability=opts.dd_ac,
-                autocontrast_max_cutoff=opts.dd_ac_max_cutoff,
+                autocontrast_probability=opts.dd_ac_prob,
+                autocontrast_max_cutoff=opts.dd_ac_cutoff,
             )
         else:
             # original dataset
@@ -180,10 +180,10 @@ def locate_latest_pkl(outdir: str):
 
 # Dynamic Dataset options
 @click.option('--dd',           help='Use DynamicDataset instead of ImageFolderDataset',        is_flag=True)
-@click.option('--dd-res',       help='Image resolution (e.g. 1024, 512 or 256 px)',             type=int, default=1024, show_default=True)
+@click.option('--dd-res',       help='The desired images resolution',                           type=int, default=1024, show_default=True)
 @click.option('--dd-crop',      help='Cropping type',                                           type=click.Choice(['center', 'random']), default="center", show_default=True)
-@click.option("--dd-ac",        help="Autocontrast probability [0..1] (default: %(default)s)", default=0, type=float)
-@click.option("--dd-ac-max-cutoff", help="Maximum percent to cut off from the histogram [0..100] (default: %(default)s)", default=0, type=float)
+@click.option("--dd-ac-prob",   help="Autocontrast probability (default: %(default)s)",         type=float, default=0.8, show_default=True)
+@click.option("--dd-ac-cutoff", help="Maximum percent to cut off from the histogram (default: %(default)s)", type=float, default=2, show_default=True)
 
 # Misc settings.
 @click.option('--desc',         help='String to include in result dir name', metavar='STR',     type=str)
