@@ -254,7 +254,7 @@ def training_loop(
 
             concatenate_videoclips(image_clips).write_videofile(
                 filename=os.path.join(run_dir, 'reals-dynamic.mp4'),
-                fps=12
+                fps=6
             )
 
         grid_z = torch.randn([labels.shape[0], G.z_dim], device=device).split(batch_gpu)

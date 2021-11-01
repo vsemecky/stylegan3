@@ -110,6 +110,7 @@ def init_dataset_kwargs(opts):
                 use_labels=opts.cond,
                 resolution=opts.dd_res,
                 crop=opts.dd_crop,
+                scale=opts.dd_scale,
                 autocontrast_probability=opts.dd_ac_prob,
                 autocontrast_max_cutoff=opts.dd_ac_cutoff,
             )
@@ -182,7 +183,8 @@ def locate_latest_pkl(outdir: str):
 @click.option('--dd',           help='Use DynamicDataset instead of ImageFolderDataset',        is_flag=True)
 @click.option('--dd-res',       help='The desired images resolution',                           type=int, default=1024, show_default=True)
 @click.option('--dd-crop',      help='Cropping type',                                           type=click.Choice(['center', 'random']), default="center", show_default=True)
-@click.option("--dd-ac-prob",   help="Autocontrast probability (default: %(default)s)",         type=float, default=0.8, show_default=True)
+@click.option('--dd-scale',     help='Scale/zoom factor. 1 = no zoom, 0.8 = crop up to 20%',    type=click.FloatRange(min=0.5, max=1), default=0.8, show_default=True)
+@click.option("--dd-ac-prob",   help="Autocontrast probability (default: %(default)s)",         type=click.FloatRange(min=0, max=1), default=0.8, show_default=True)
 @click.option("--dd-ac-cutoff", help="Maximum percent to cut off from the histogram (default: %(default)s)", type=float, default=2, show_default=True)
 
 # Misc settings.
