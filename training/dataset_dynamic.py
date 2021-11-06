@@ -27,7 +27,7 @@ class DynamicDataset(ImageFolderDataset):
 
         PIL.ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-        super().__init__(path=path, resolution=resolution, **super_kwargs)
+        super().__init__(path=path, resolution=resolution, use_labels=use_labels, **super_kwargs)
 
     def _load_raw_image(self, raw_idx):
         fname = self._image_fnames[raw_idx]
