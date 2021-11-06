@@ -1,4 +1,5 @@
 ﻿"""Streaming images and labels from datasets created with dataset_tool.py."""
+import pathlib
 import random
 import numpy as np
 import PIL.Image
@@ -77,17 +78,23 @@ class DynamicDataset(ImageFolderDataset):
         if not self._use_labels:
             return None
 
-        fname = 'dataset.json'
-        if fname not in self._all_fnames:
-            return None
-        with self._open_file(fname) as f:
-            labels = json.load(f)['labels']
-        if labels is None:
-            return None
-        labels = dict(labels)
+        labels = {}
+        for fname in self._all_fnames:
+            print(fname)
+            p = pathlib.Path(fname)
+            try:
+                label = int(p.parts[0])
+                labels[fname] = label
+                print(p, p.parts, label)
+            except:
+                print(f"Invalid label '{p.parts[0]}' in file path '{fname}'")
+                exit()
+
         labels = [labels[fname.replace('\\', '/')] for fname in self._image_fnames]
         labels = np.array(labels)
         labels = labels.astype({1: np.int64, 2: np.float32}[labels.ndim])
+        print(labels)
+        print(labels.ndim, labels.shape)
         return labels
 
     def random_zoom_crop(self, image: PIL.Image):
@@ -190,4 +197,3 @@ class DynamicDataset(ImageFolderDataset):
 
         lut = lut + lut + lut
         return image.point(lut)
-#----------------------------------------------------------------------------
