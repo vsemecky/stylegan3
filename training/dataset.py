@@ -59,6 +59,7 @@ class Dataset(torch.utils.data.Dataset):
             self._xflip = np.tile(self._xflip, 2)  # double the indices for xflip, otherwise we get out of bounds
 
     def _get_raw_labels(self):
+        print("Dataset._get_raw_labels()")
         if self._raw_labels is None:
             self._raw_labels = self._load_raw_labels() if self._use_labels else None
             if self._raw_labels is None:
@@ -138,6 +139,7 @@ class Dataset(torch.utils.data.Dataset):
 
     @property
     def label_shape(self):
+        print("Dataset.label_shape()")
         if self._label_shape is None:
             raw_labels = self._get_raw_labels()
             if raw_labels.dtype == np.int64:
@@ -153,6 +155,7 @@ class Dataset(torch.utils.data.Dataset):
 
     @property
     def has_labels(self):
+        print("Dataset.has_labels()")
         return any(x != 0 for x in self.label_shape)
 
     @property

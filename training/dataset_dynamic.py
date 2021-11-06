@@ -75,6 +75,7 @@ class DynamicDataset(ImageFolderDataset):
         return image_np
 
     def _load_raw_labels(self):
+        print("DynamicDataset._load_raw_labels()")
         if not self._use_labels:
             return None
 
