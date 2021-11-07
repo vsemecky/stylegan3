@@ -75,18 +75,15 @@ class DynamicDataset(ImageFolderDataset):
         return image_np
 
     def _load_raw_labels(self):
-        print("DynamicDataset._load_raw_labels()")
         if not self._use_labels:
             return None
 
         labels = {}
         for fname in self._all_fnames:
-            print(fname)
             p = pathlib.Path(fname)
             try:
                 label = int(p.parts[0])
                 labels[fname] = label
-                print(p, p.parts, label)
             except:
                 print(f"Invalid label '{p.parts[0]}' in file path '{fname}'")
                 exit()
@@ -94,8 +91,6 @@ class DynamicDataset(ImageFolderDataset):
         labels = [labels[fname.replace('\\', '/')] for fname in self._image_fnames]
         labels = np.array(labels)
         labels = labels.astype({1: np.int64, 2: np.float32}[labels.ndim])
-        print(labels)
-        print(labels.ndim, labels.shape)
         return labels
 
     def random_zoom_crop(self, image: PIL.Image):
