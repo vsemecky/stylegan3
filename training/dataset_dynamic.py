@@ -1,12 +1,10 @@
-﻿"""Streaming images and labels from datasets created with dataset_tool.py."""
+﻿"""Alternative dataset"""
 import pathlib
 import random
 import numpy as np
 import PIL.Image
 import PIL.ImageOps
 import PIL.ImageFile
-import progressbar
-
 from training.dataset import ImageFolderDataset
 
 
@@ -27,45 +25,19 @@ class DynamicDataset(ImageFolderDataset):
         if resolution is None:
             raise IOError('Resolution must be explicitly set when using Dynamic Dataset, e.g. --dd-res=1024')
 
-        PIL.ImageFile.LOAD_TRUNCATED_IMAGES = True
-
         super().__init__(path=path, resolution=resolution, use_labels=use_labels, **super_kwargs)
 
-        # Check images
-        self._check_images()
-        # Debug
-        print("\nExiting.\n")
-        exit()
-
-    def _check_images(self):
-        """ Check all images and skip problematic (truncated, animated, transparent, too small)"""
-        checked_fnames = []
-        fnames_count = len(self._image_fnames)
-        print("\nChecking images")
-
-        # for i, fname in enumerate(self._image_fnames):
-        for i, fname in progressbar.progressbar(enumerate(self._image_fnames), max_value=len(self._image_fnames), redirect_stdout=True):
-            try:
-                with self._open_file(fname) as f:
-                    image_pil = PIL.Image.open(f).convert('RGB')
-                    checked_fnames.append(fname)
-                    print(f"OK: {fname}")
-            except Exception as e:
-                print(f"SKIPPED: {fname} - Loading error: {e}")
-
-        # Print stats
-        print(f"Images total   =", len(self._image_fnames))
-        print(f"Images skipped =", len(self._image_fnames) - len(checked_fnames))
-        print(f"-----------------------------")
-        print(f"Images used    =", len(checked_fnames))
-
-        # Use only checked images
-        self._image_fnames = checked_fnames
-
     def _load_raw_image(self, raw_idx):
+        # Load image
         fname = self._image_fnames[raw_idx]
-        with self._open_file(fname) as f:
-            image_pil = PIL.Image.open(f).convert('RGB')
+        try:
+            with self._open_file(fname) as f:
+                image_pil = PIL.Image.open(f).convert('RGB')
+        except Exception as e:
+            # Problem with loading image? Use another randomly selected image instead
+            new_idx = random.randrange(0, len(self._all_fnames))
+            print("Bad image:", f"#{raw_idx} {fname} - using #{new_idx}")
+            return self._load_raw_image(new_idx)
 
         # Autocontrast
         if random.random() < self._autocontrast_probability:
