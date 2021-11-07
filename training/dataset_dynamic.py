@@ -5,6 +5,8 @@ import numpy as np
 import PIL.Image
 import PIL.ImageOps
 import PIL.ImageFile
+import progressbar
+
 from training.dataset import ImageFolderDataset
 
 
@@ -28,6 +30,37 @@ class DynamicDataset(ImageFolderDataset):
         PIL.ImageFile.LOAD_TRUNCATED_IMAGES = True
 
         super().__init__(path=path, resolution=resolution, use_labels=use_labels, **super_kwargs)
+
+        # Check images
+        self._check_images()
+        # Debug
+        print("\nExiting.\n")
+        exit()
+
+    def _check_images(self):
+        """ Check all images and skip problematic (truncated, animated, transparent, too small)"""
+        checked_fnames = []
+        fnames_count = len(self._image_fnames)
+        print("\nChecking images")
+
+        # for i, fname in enumerate(self._image_fnames):
+        for i, fname in progressbar.progressbar(enumerate(self._image_fnames), max_value=len(self._image_fnames), redirect_stdout=True):
+            try:
+                with self._open_file(fname) as f:
+                    image_pil = PIL.Image.open(f).convert('RGB')
+                    checked_fnames.append(fname)
+                    print(f"OK: {fname}")
+            except Exception as e:
+                print(f"SKIPPED: {fname} - Loading error: {e}")
+
+        # Print stats
+        print(f"Images total   =", len(self._image_fnames))
+        print(f"Images skipped =", len(self._image_fnames) - len(checked_fnames))
+        print(f"-----------------------------")
+        print(f"Images used    =", len(checked_fnames))
+
+        # Use only checked images
+        self._image_fnames = checked_fnames
 
     def _load_raw_image(self, raw_idx):
         fname = self._image_fnames[raw_idx]
@@ -104,7 +137,6 @@ class DynamicDataset(ImageFolderDataset):
 
         # image_cropped = image.crop(crop_box).resize(size=self._size, resample=PIL.Image.LANCZOS, box=None, reducing_gap=None)
 
-        # todo Zkusit jestli resize+box ned stejný výsledej
         image_cropped = image.resize(size=self._size, resample=PIL.Image.LANCZOS, box=crop_box)
 
         return image_cropped
