@@ -246,7 +246,7 @@ def training_loop(
         if training_set_kwargs['class_name'] == 'training.dataset_dynamic.DynamicDataset':
             print('Exporting reals-dynamic.mp4 for DynamicDataset...')
             image_clips = []
-            for i in range(0, 120):  # 60 frames
+            for i in range(0, 120):  # 60 seconds
                 grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
                 image_pil = get_image_grid(images, drange=[0, 255], grid_size=grid_size)
                 image_clip = ImageClip(np.array(image_pil)).resize(height=1080).set_duration(0.5)
@@ -254,7 +254,8 @@ def training_loop(
 
             concatenate_videoclips(image_clips).write_videofile(
                 filename=os.path.join(run_dir, 'reals-dynamic.mp4'),
-                fps=6
+                fps=2,
+                threads=os.cpu_count()
             )
 
         grid_z = torch.randn([labels.shape[0], G.z_dim], device=device).split(batch_gpu)
