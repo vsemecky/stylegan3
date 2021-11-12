@@ -246,7 +246,9 @@ def training_loop(
         if training_set_kwargs['class_name'] == 'training.dataset_dynamic.DynamicDataset':
             print('Exporting reals-dynamic.mp4 for DynamicDataset...')
             image_clips = []
-            for i in range(0, 120):  # 60 seconds
+            frames_count = 60
+            for i in range(0, frames_count):
+                print(".", end="")
                 grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
                 image_pil = get_image_grid(images, drange=[0, 255], grid_size=grid_size)
                 image_clip = ImageClip(np.array(image_pil)).resize(height=1080).set_duration(0.5)
