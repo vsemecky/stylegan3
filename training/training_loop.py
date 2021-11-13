@@ -243,7 +243,7 @@ def training_loop(
         save_image_grid(images, os.path.join(run_dir, 'reals.jpg'), drange=[0,255], grid_size=grid_size)
 
         # Generate reals-dynamic.mp4 (for DynamicDataset only)
-        if training_set_kwargs['class_name'] == 'training.dataset_dynamic.DynamicDataset':
+        if False and training_set_kwargs['class_name'] == 'training.dataset_dynamic.DynamicDataset':
             print('Exporting reals-dynamic.mp4 for DynamicDataset...')
             image_clips = []
             frames_count = 60
