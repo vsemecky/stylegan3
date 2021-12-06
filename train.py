@@ -104,11 +104,20 @@ def init_dataset_kwargs(opts):
     try:
         if opts.dd:
             # Dynamic Dataset
+            resolution = re.match("(\d+)\D*(\d+)?", opts.dd)
+            if resolution:
+                dd_width, dd_height = resolution.groups()
+                if dd_height is None:
+                    dd_height = dd_width
+                dd_width, dd_height = int(dd_width), int(dd_height)
+            else:
+                raise AttributeError(f"Invalid --dd format '{opts.dd}'. Use --dd=1024 or --dd=1024x1024")
+
             dataset_kwargs = dnnlib.EasyDict(
                 class_name='training.dataset_dynamic.DynamicDataset',
                 path=opts.data,
                 use_labels=opts.cond,
-                resolution=opts.dd_res,
+                resolution=dd_width,
                 crop=opts.dd_crop,
                 scale=opts.dd_scale,
                 autocontrast_probability=opts.dd_ac_prob,
@@ -180,8 +189,7 @@ def locate_latest_pkl(outdir: str):
 @click.option('--mbstd-group',  help='Minibatch std group size', metavar='INT',                 type=click.IntRange(min=1), default=4, show_default=True)
 
 # Dynamic Dataset options
-@click.option('--dd',           help='Use DynamicDataset instead of ImageFolderDataset',        is_flag=True)
-@click.option('--dd-res',       help='The desired images resolution',                           type=int, default=1024, show_default=True)
+@click.option('--dd',           help='Init DynamicDataset with specific resolution (e.g. --dd=1024)',        type=str)
 @click.option('--dd-crop',      help='Cropping type',                                           type=click.Choice(['center', 'random']), default="center", show_default=True)
 @click.option('--dd-scale',     help='Scale/zoom factor. 1 = no zoom, 0.8 = crop up to 20%',    type=click.FloatRange(min=0.5, max=1), default=0.8, show_default=True)
 @click.option("--dd-ac-prob",   help="Autocontrast probability (default: %(default)s)",         type=click.FloatRange(min=0, max=1), default=0.8, show_default=True)
