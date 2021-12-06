@@ -1,6 +1,7 @@
 ﻿"""Alternative dataset"""
 import pathlib
 import random
+import re
 import numpy as np
 import PIL.Image
 import PIL.ImageOps
@@ -10,22 +11,20 @@ from training.dataset import ImageFolderDataset
 
 class DynamicDataset(ImageFolderDataset):
 
-    def __init__(self, path, resolution=None, crop="center", scale=0.8, autocontrast_probability=0, autocontrast_max_cutoff=0, use_labels=False, **super_kwargs):
-        self._resolution = resolution
-        self._width = resolution
-        self._height = resolution
-        self._ratio = resolution / resolution
+    def __init__(self, path, resolution, crop="center", scale=0.8, autocontrast_probability=0, autocontrast_max_cutoff=0, use_labels=False):
+        self._width, self._height = self.decode_resolution(resolution)
+        self._ratio = self._width / self._height
         self._crop = crop
         self._scale = scale  # Scale factor defines, how much we can zoom in (or cut into the image). 1 = no zoooming. e.g. 0.8 = up to 20% of the image is randomly cropped
         self._use_labels = use_labels
-        self._size = (resolution, resolution)  # (width, height)
+        self._size = (self._width, self._height)
         self._autocontrast_probability = autocontrast_probability
         self._autocontrast_max_cutoff = autocontrast_max_cutoff
 
         if resolution is None:
             raise IOError('Resolution must be explicitly set when using Dynamic Dataset, e.g. --dd-res=1024')
 
-        super().__init__(path=path, resolution=resolution, use_labels=use_labels, **super_kwargs)
+        super().__init__(path=path, resolution=self._width, use_labels=use_labels)
 
     def _load_raw_image(self, raw_idx):
         # Load image
@@ -106,9 +105,6 @@ class DynamicDataset(ImageFolderDataset):
         left = random.randint(0, image.width - window_width)
         top = random.randint(0, image.height - window_height)
         crop_box = (left, top, left + window_width, top + window_height)
-
-        # image_cropped = image.crop(crop_box).resize(size=self._size, resample=PIL.Image.LANCZOS, box=None, reducing_gap=None)
-
         image_cropped = image.resize(size=self._size, resample=PIL.Image.LANCZOS, box=crop_box)
 
         return image_cropped
@@ -124,7 +120,20 @@ class DynamicDataset(ImageFolderDataset):
         elif self._ratio < current_ratio:
             return round(height * self._ratio), height
 
-    def autocontrast(self, image, cutoff=0, ignore=None, mask=None):
+    @staticmethod
+    def decode_resolution(resolution: str):
+        """ Converts string like '1024x1024' to (width, height) """
+        result = re.match("(\d+)\D*(\d+)?", resolution)
+        if result:
+            dd_width, dd_height = result.groups()
+            if dd_height is None:
+                dd_height = dd_width
+            return int(dd_width), int(dd_height)
+        else:
+            raise ValueError(f"resolution should be in format '1024x1024' or '1024'")
+
+    @staticmethod
+    def autocontrast(image, cutoff=0, ignore=None, mask=None):
         """
         Photoshop-like autocontrast.
 

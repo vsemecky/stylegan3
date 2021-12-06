@@ -103,34 +103,26 @@ def launch_training(c, desc, outdir, dry_run):
 def init_dataset_kwargs(opts):
     try:
         if opts.dd:
-            # Dynamic Dataset
-            resolution = re.match("(\d+)\D*(\d+)?", opts.dd)
-            if resolution:
-                dd_width, dd_height = resolution.groups()
-                if dd_height is None:
-                    dd_height = dd_width
-                dd_width, dd_height = int(dd_width), int(dd_height)
-            else:
-                raise AttributeError(f"Invalid --dd format '{opts.dd}'. Use --dd=1024 or --dd=1024x1024")
-
+            # Use Dynamic Dataset
             dataset_kwargs = dnnlib.EasyDict(
                 class_name='training.dataset_dynamic.DynamicDataset',
                 path=opts.data,
                 use_labels=opts.cond,
-                resolution=dd_width,
+                resolution=opts.dd,
                 crop=opts.dd_crop,
                 scale=opts.dd_scale,
                 autocontrast_probability=opts.dd_ac_prob,
                 autocontrast_max_cutoff=opts.dd_ac_cutoff,
             )
+            dataset_obj = dnnlib.util.construct_class_by_name(**dataset_kwargs)
+            dataset_kwargs.max_size = len(dataset_obj)
         else:
-            # original dataset
+            # Use original ImageFolderDataset
             dataset_kwargs = dnnlib.EasyDict(class_name='training.dataset.ImageFolderDataset', path=opts.data, use_labels=True, max_size=None, xflip=False)
-
-        dataset_obj = dnnlib.util.construct_class_by_name(**dataset_kwargs) # Subclass of training.dataset.Dataset.
-        dataset_kwargs.resolution = dataset_obj.resolution # Be explicit about resolution.
-        dataset_kwargs.use_labels = dataset_obj.has_labels # Be explicit about labels.
-        dataset_kwargs.max_size = len(dataset_obj) # Be explicit about dataset size.
+            dataset_obj = dnnlib.util.construct_class_by_name(**dataset_kwargs)  # Subclass of training.dataset.Dataset.
+            dataset_kwargs.resolution = dataset_obj.resolution  # Be explicit about resolution.
+            dataset_kwargs.use_labels = dataset_obj.has_labels  # Be explicit about labels.
+            dataset_kwargs.max_size = len(dataset_obj)  # Be explicit about dataset size.
         return dataset_kwargs, dataset_obj.name
     except IOError as err:
         raise click.ClickException(f'--data: {err}')
@@ -157,7 +149,7 @@ def locate_latest_pkl(outdir: str):
 
 #----------------------------------------------------------------------------
 
-@click.command()
+@click.command(context_settings=dict(max_content_width=9999))
 
 # Required.
 @click.option('--outdir',       help='Where to save the results', metavar='DIR',                required=True)
@@ -189,11 +181,12 @@ def locate_latest_pkl(outdir: str):
 @click.option('--mbstd-group',  help='Minibatch std group size', metavar='INT',                 type=click.IntRange(min=1), default=4, show_default=True)
 
 # Dynamic Dataset options
-@click.option('--dd',           help='Init DynamicDataset with specific resolution (e.g. --dd=1024)',        type=str)
+@click.option('--dd',           help='Init DynamicDataset with specific resolution (e.g. --dd=1024x1024)',   type=str)
+@click.option('--dd-extend',    help='Extend background to another resolution (e.g. --dd-extend=1024x1024)', type=str)
 @click.option('--dd-crop',      help='Cropping type',                                           type=click.Choice(['center', 'random']), default="center", show_default=True)
 @click.option('--dd-scale',     help='Scale/zoom factor. 1 = no zoom, 0.8 = crop up to 20%',    type=click.FloatRange(min=0.5, max=1), default=0.8, show_default=True)
 @click.option("--dd-ac-prob",   help="Autocontrast probability (default: %(default)s)",         type=click.FloatRange(min=0, max=1), default=0.8, show_default=True)
-@click.option("--dd-ac-cutoff", help="Maximum percent to cut off from the histogram (default: %(default)s)", type=float, default=2, show_default=True)
+@click.option("--dd-ac-cutoff", help="Max. percent to cut off from the histogram (default: %(default)s)", type=float, default=2, show_default=True)
 
 # Misc settings.
 @click.option('--desc',         help='String to include in result dir name', metavar='STR',     type=str)
