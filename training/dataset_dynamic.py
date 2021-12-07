@@ -11,7 +11,7 @@ from training.dataset import ImageFolderDataset
 
 class DynamicDataset(ImageFolderDataset):
 
-    def __init__(self, path, resolution, crop="center", scale=0.8, autocontrast_probability=0, autocontrast_max_cutoff=0, use_labels=False):
+    def __init__(self, path, resolution, crop="center", scale=0.8, autocontrast_probability=0, autocontrast_max_cutoff=0, use_labels=False, **super_kwargs):
         self._width, self._height = self.decode_resolution(resolution)
         self._ratio = self._width / self._height
         self._crop = crop
@@ -24,7 +24,7 @@ class DynamicDataset(ImageFolderDataset):
         if resolution is None:
             raise IOError('Resolution must be explicitly set when using Dynamic Dataset, e.g. --dd-res=1024')
 
-        super().__init__(path=path, resolution=self._width, use_labels=use_labels)
+        super().__init__(path=path, resolution=self._width, use_labels=use_labels, **super_kwargs)
 
     def _load_raw_image(self, raw_idx):
         # Load image
@@ -63,7 +63,7 @@ class DynamicDataset(ImageFolderDataset):
             )
         else:
             # image_pil = self.random_zoom_crop(image=image_pil)
-            if image_pil.width <= self._resolution or image_pil.height <= self._resolution:
+            if image_pil.width <= self._width or image_pil.height <= self._height:
                 # If image too small to zoom-in, do simple random crop without zooming
                 # @todo Místo jiného zpracování upscalovat aby i šířka i výška splňovali minimum
                 image_pil = PIL.ImageOps.fit(
