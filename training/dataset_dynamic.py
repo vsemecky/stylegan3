@@ -11,7 +11,7 @@ from training.dataset import ImageFolderDataset
 
 class DynamicDataset(ImageFolderDataset):
 
-    def __init__(self, path, resolution, crop="center", scale=0.8, autocontrast_probability=0, autocontrast_max_cutoff=0, use_labels=False, **super_kwargs):
+    def __init__(self, path, resolution, extend, crop="center", scale=0.8, autocontrast_probability=0, autocontrast_max_cutoff=0, use_labels=False, **super_kwargs):
         self._width, self._height = self.decode_resolution(resolution)
         self._ratio = self._width / self._height
         self._crop = crop
@@ -20,6 +20,9 @@ class DynamicDataset(ImageFolderDataset):
         self._size = (self._width, self._height)
         self._autocontrast_probability = autocontrast_probability
         self._autocontrast_max_cutoff = autocontrast_max_cutoff
+        self._extend = extend
+        if extend:
+            self._extend_width, self._extend_height = self.decode_resolution(extend)
 
         if resolution is None:
             raise IOError('Resolution must be explicitly set when using Dynamic Dataset, e.g. --dd-res=1024')
@@ -74,6 +77,12 @@ class DynamicDataset(ImageFolderDataset):
                 )
             else:
                 image_pil = self.random_zoom_crop(image=image_pil)
+
+        if self._extend:
+            extended_pil = PIL.Image.new(mode="RGB", size=(self._extend_width, self._extend_height), color=(0, 0, 0))
+            offset = ((self._extend_width - image_pil.width) // 2, (self._extend_height - image_pil.height) // 2)
+            extended_pil.paste(image_pil, offset)
+            image_pil = extended_pil
 
         image_np = np.array(image_pil).transpose(2, 0, 1)  # HWC => CHW
         return image_np

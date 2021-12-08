@@ -109,6 +109,7 @@ def init_dataset_kwargs(opts):
                 path=opts.data,
                 use_labels=opts.cond,
                 resolution=opts.dd,
+                extend=opts.dd_extend,
                 crop=opts.dd_crop,
                 scale=opts.dd_scale,
                 autocontrast_probability=opts.dd_ac_prob,
