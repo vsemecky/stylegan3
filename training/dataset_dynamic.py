@@ -23,11 +23,9 @@ class DynamicDataset(ImageFolderDataset):
         self._extend = extend
         if extend:
             self._extend_width, self._extend_height = self.decode_resolution(extend)
-
-        if resolution is None:
-            raise IOError('Resolution must be explicitly set when using Dynamic Dataset, e.g. --dd-res=1024')
-
-        super().__init__(path=path, resolution=self._width, use_labels=use_labels, **super_kwargs)
+            super().__init__(path=path, resolution=self._extend_width, use_labels=use_labels, **super_kwargs)
+        else:
+            super().__init__(path=path, resolution=self._width, use_labels=use_labels, **super_kwargs)
 
     def _load_raw_image(self, raw_idx):
         # Load image
