@@ -108,7 +108,7 @@ def init_dataset_kwargs(opts):
                 class_name='training.dataset_dynamic.DynamicDataset',
                 path=opts.data,
                 use_labels=opts.cond,
-                resolution=opts.dd,
+                resolution=opts.dd_res,
                 extend=opts.dd_extend,
                 crop=opts.dd_crop,
                 scale=opts.dd_scale,
@@ -182,12 +182,13 @@ def locate_latest_pkl(outdir: str):
 @click.option('--mbstd-group',  help='Minibatch std group size', metavar='INT',                 type=click.IntRange(min=1), default=4, show_default=True)
 
 # Dynamic Dataset options
-@click.option('--dd',           help='Init DynamicDataset with specific resolution (e.g. --dd=1024x1024)',   type=str)
-@click.option('--dd-extend',    help='Extend background to another resolution (e.g. --dd-extend=1024x1024)', type=str)
+@click.option('--dd',           help='Tells Stylegan to use DynamicDataset instead of the original ImageFolderDataset', is_flag=True)
+@click.option('--dd-res',       help='The desired images resolution (e.g. --dd-res=1024x1024)', type=str, default="1024x1024", show_default=True)
 @click.option('--dd-crop',      help='Cropping type',                                           type=click.Choice(['center', 'random']), default="center", show_default=True)
 @click.option('--dd-scale',     help='Scale/zoom factor. 1 = no zoom, 0.8 = crop up to 20%',    type=click.FloatRange(min=0.5, max=1), default=0.8, show_default=True)
 @click.option("--dd-ac-prob",   help="Autocontrast probability (default: %(default)s)",         type=click.FloatRange(min=0, max=1), default=0.8, show_default=True)
 @click.option("--dd-ac-cutoff", help="Max. percent to cut off from the histogram (default: %(default)s)", type=float, default=2, show_default=True)
+@click.option('--dd-extend',    help='EXPERIMENTAL: Extend background to another resolution (e.g. --dd-extend=1024x1024)', type=str)
 
 # Misc settings.
 @click.option('--desc',         help='String to include in result dir name', metavar='STR',     type=str)

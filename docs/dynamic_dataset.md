@@ -10,23 +10,28 @@ I have now decided to integrate Augmentor directly into StyleGan3 as a new datas
 
 ## Features
 - **Uses raw images** - images don't have to be the same size. You don't need to use `dataset_tool.py` before training.
-  Just take the images as they are and put them into single directory or zip file.
+  Just take the images as they are and put them into single directory, or a zip file.
 - **Cropping on the fly** - Images are cropped to the requested size on the fly.
   The image is cropped differently each time it is used, which leads to the additional augmentation. 
 - **simple directory structure**
-- **ignores non-image files** automatically (e.i. It doesn't matter if there are some text files in the directory).
+- conditional and non-conditional datasets/networks supported
 - **No naming convention** - image files can be named any way you prefer.
 - **Wide variety of image formats** - not only `JPEG`, `PNG`, `GIF` but all image formats supported by the
   <a href="https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html">PIL library</a>.
 - **24-bit RGB** mode. Images in other color modes (`32-bit RGB`, `8-bit`, `grayscale`, `RGBA`) are converted to 24-bit RGB.
   I do not recommend using transparent PNG or transparent GIF, because transparent color can break the overall color tones.
 
+## Není killer fíčura, možná pro zjednodušení nezmiňovat
+- **ignores non-image files** automatically (e.i. It doesn't matter if there are some text files in the directory).
+
 ## Command line arguments
 
-- `--dd-zoom-out=90`
-- `--dd-zoom-out=90`
-- `--dd-zoom-out=90`
-- `--dd-zoom-out=90`
+`--dd RESOLUTION`  Init DynamicDataset with specific resolution (e.g. `--dd=1024` or `--dd=1024x1024`)
+
+`--dd-crop`      Cropping type: 'center' or 'random' (default='random')
+`--dd-scale`     Scale/zoom factor. 1 = no zoom, 0.8 = crop up to 20%',    type=click.FloatRange(min=0.5, max=1), default=0.8, show_default=True)
+`--dd-ac-prob`,  Autocontrast probability (default: %(default)s)",         type=click.FloatRange(min=0, max=1), default=0.8, show_default=True)
+`--dd-ac-cutoff` Maximum percent to cut off from the histogram (default: %(default)s)", type=float, default=2, show_default=True)
 
 <table>
 <td>
@@ -41,11 +46,11 @@ I have now decided to integrate Augmentor directly into StyleGan3 as a new datas
  ┣━🧾 image002.png
  ┣━🧾 image003.gif
  ┣━🧾 image004.webp
-┣ 🧾 image12345.webp
-┣ 🧾 another_image.jpg
-┣ 🧾 file-name-does-not-matter.jpg
-┣ 🧾 ...
-┣ 🧾 ...
+ ┣━🧾 image12345.webp
+ ┣━🧾 another_image.jpg
+ ┣━🧾 file-name-does-not-matter.jpg
+ ┣━🧾 ...
+ ┣━🧾 ...
 ```
 
 
