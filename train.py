@@ -108,6 +108,8 @@ def init_dataset_kwargs(opts):
                 class_name='training.dataset_dynamic.DynamicDataset',
                 path=opts.data,
                 use_labels=opts.cond,
+                xflip=opts.mirror,
+                yflip=opts.mirrory,
                 resolution=opts.dd_res,
                 extend=opts.dd_extend,
                 crop=opts.dd_crop,

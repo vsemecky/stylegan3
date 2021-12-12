@@ -1,21 +1,30 @@
-﻿"""Alternative dataset"""
+﻿"""
+Dynamic Dataset for StyleGan3
+
+An alternative dataset that uses raw images and crops/resize them on the fly.
+You don't need to use `dataset_tool.py` before training.
+"""
+import os
 import pathlib
 import random
 import re
+import zipfile
 import numpy as np
 import PIL.Image
 import PIL.ImageOps
 import PIL.ImageFile
-from training.dataset import ImageFolderDataset
+from training.dataset import Dataset
 
 
-class DynamicDataset(ImageFolderDataset):
+class DynamicDataset(Dataset):
 
-    def __init__(self, path, resolution, extend, crop="center", scale=0.8, autocontrast_probability=0, autocontrast_max_cutoff=0, use_labels=False, **super_kwargs):
+    def __init__(self, path, resolution, extend, crop="random", scale=0.8, autocontrast_probability=0, autocontrast_max_cutoff=0, use_labels=False, xflip=False, yflip=False, **super_kwargs):
+        self._path = path
+        self._zipfile = None
         self._width, self._height = self.decode_resolution(resolution)
         self._ratio = self._width / self._height
         self._crop = crop
-        self._scale = scale  # Scale factor defines, how much we can zoom in (or cut into the image). 1 = no zoooming. e.g. 0.8 = up to 20% of the image is randomly cropped
+        self._scale = scale
         self._use_labels = use_labels
         self._size = (self._width, self._height)
         self._autocontrast_probability = autocontrast_probability
@@ -23,9 +32,52 @@ class DynamicDataset(ImageFolderDataset):
         self._extend = extend
         if extend:
             self._extend_width, self._extend_height = self.decode_resolution(extend)
-            super().__init__(path=path, resolution=self._extend_width, use_labels=use_labels, **super_kwargs)
+
+        # ImageFolderInit
+        if os.path.isdir(self._path):
+            self._type = 'dir'
+            self._all_fnames = {os.path.relpath(os.path.join(root, fname), start=self._path) for root, _dirs, files in os.walk(self._path) for fname in files}
+        elif self._file_ext(self._path) == '.zip':
+            self._type = 'zip'
+            self._all_fnames = set(self._get_zipfile().namelist())
         else:
-            super().__init__(path=path, resolution=self._width, use_labels=use_labels, **super_kwargs)
+            raise IOError('Path must point to a directory or zip')
+
+        PIL.Image.init()
+
+        self._image_fnames = sorted(fname for fname in self._all_fnames if self._file_ext(fname) in PIL.Image.EXTENSION)
+        if len(self._image_fnames) == 0:
+            raise IOError('No image files found in the specified path')
+
+        name = os.path.splitext(os.path.basename(self._path))[0]
+        raw_shape = [len(self._image_fnames)] + list(self._load_raw_image(0).shape)
+        print(raw_shape)
+
+        super().__init__(name=name, raw_shape=raw_shape, use_labels=use_labels, xflip=xflip, yflip=yflip, **super_kwargs)
+
+    @staticmethod
+    def _file_ext(fname):
+        return os.path.splitext(fname)[1].lower()
+
+    def _get_zipfile(self):
+        assert self._type == 'zip'
+        if self._zipfile is None:
+            self._zipfile = zipfile.ZipFile(self._path)
+        return self._zipfile
+
+    def _open_file(self, fname):
+        if self._type == 'dir':
+            return open(os.path.join(self._path, fname), 'rb')
+        if self._type == 'zip':
+            return self._get_zipfile().open(fname, 'r')
+        return None
+
+    def close(self):
+        try:
+            if self._zipfile is not None:
+                self._zipfile.close()
+        finally:
+            self._zipfile = None
 
     def _load_raw_image(self, raw_idx):
         # Load image
