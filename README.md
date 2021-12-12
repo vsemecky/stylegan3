@@ -7,7 +7,7 @@
 - option to mirror dataset vertically (`--mirrory`)
 - brought back option to disable color augmentations (`--augpipe=bg`)
 - resume from the latest pkl file in the outdir (`--resume=latest`)
-- [Dynamic Dataset](docs/dynamic_dataset.md) - alternative dataset loader that uses raw images and crops/resize them on the fly (`--dd`). You don't need to use `dataset_tool.py` before training.
+- [Dynamic Dataset](dynamic_dataset/README.md) - alternative dataset loader that uses raw images and crops/resize them on the fly (`--dd`). You don't need to use `dataset_tool.py` before training.
 
 ___
 ## Alias-Free Generative Adversarial Networks (StyleGAN3)<br><sub>Official PyTorch implementation of the NeurIPS 2021 paper</sub>

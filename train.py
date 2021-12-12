@@ -105,7 +105,7 @@ def init_dataset_kwargs(opts):
         if opts.dd:
             # Use Dynamic Dataset
             dataset_kwargs = dnnlib.EasyDict(
-                class_name='training.dataset_dynamic.DynamicDataset',
+                class_name='dynamic_dataset.dynamic_dataset.DynamicDataset',
                 path=opts.data,
                 use_labels=opts.cond,
                 xflip=opts.mirror,
