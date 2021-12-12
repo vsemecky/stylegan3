@@ -18,7 +18,20 @@ from training.dataset import Dataset
 
 class DynamicDataset(Dataset):
 
-    def __init__(self, path, resolution, extend, crop="random", scale=0.8, autocontrast_probability=0, autocontrast_max_cutoff=0, use_labels=False, xflip=False, yflip=False, **super_kwargs):
+    def __init__(
+        self,
+        path,
+        resolution,
+        extend,
+        crop="random",
+        scale=0.8,
+        autocontrast_probability=0,
+        autocontrast_max_cutoff=0,
+        use_labels=False,
+        xflip=False,
+        yflip=False,
+        **super_kwargs
+    ):
         self._path = path
         self._zipfile = None
         self._width, self._height = self.decode_resolution(resolution)
@@ -78,6 +91,9 @@ class DynamicDataset(Dataset):
                 self._zipfile.close()
         finally:
             self._zipfile = None
+
+    def __getstate__(self):
+        return dict(super().__getstate__(), _zipfile=None)
 
     def _load_raw_image(self, raw_idx):
         # Load image
