@@ -1,37 +1,31 @@
 # Dynamic Dataset
 
-Before, for offline augmentation I used my simpler command-line tool <a href="https://github.com/vsemecky/augmentor">Augmentor</a>,
-which I created for the <a href="https://thisbeachdoesnotexist.com/">This Beach Does Not Exist</a>. Now I've decided to integrate Augmentor directly into the <a href="https://github.com/vsemecky/stylegan3">StyleGan3</a>
-as a new dataset type that will do the augmentation on the fly, so you won't need the tools like `dataset_tool.py`.
-
-It is based on my simpler Augmentor command-line tool, which I used for offline augmentation for <a href="https://wwwthisbeachdoesnotexist.com">This Beach Does Not Exist</a>.
-
-I have now decided to integrate Augmentor directly into StyleGan3 as a new dataset type that will do augmentation on the fly.
 
 ## Features
-- **Uses raw images** - images don't have to be the same size. You don't need to use `dataset_tool.py` before training.
+- **Uses raw images**
+  - Images don't have to be the same size.
+  - You don't need to use `dataset_tool.py` before training.
   Just take the images as they are and put them into single directory, or a zip file.
-- **Cropping on the fly** - Images are cropped to the requested size on the fly.
-  The image is cropped differently each time it is used, which leads to the additional augmentation. 
-- **simple directory structure**
-- conditional and non-conditional datasets/networks supported
-- **No naming convention** - image files can be named any way you prefer.
-- **Wide variety of image formats** - not only `JPEG`, `PNG`, `GIF` but all image formats supported by the
+- **Preprocessing images on the fly**
+  - Images are converted to 24-bit RGB
+  - Images are cropped and resized to the requested resolution according to parameters `--dd-res`, `--dd-crop` and `--dd-scale`
+  - Images are randomly autocontrasted according to parameters `--dd-ac-prob` and `--dd-ac-cutoff`
+  - Since the images are cropped, resized and autocontrasted differently each time they are used, this leads to additional augmentation
+- **Simple directory structure**
+  - Both **conditional** and **non-conditional** datasets supported
+  - No naming convention - image files can be named any way you prefer.
+  - **Wide variety of image formats** `JPEG`, `PNG`, `GIF` and all image formats supported by the
   <a href="https://pillow.readthedocs.io/en/stable/handbook/image-file-formats.html">PIL library</a>.
-- **24-bit RGB** mode. Images in other color modes (`32-bit RGB`, `8-bit`, `grayscale`, `RGBA`) are converted to 24-bit RGB.
-  I do not recommend using transparent PNG or transparent GIF, because transparent color can break the overall color tones.
-
-## Není killer fíčura, možná pro zjednodušení nezmiňovat
-- **ignores non-image files** automatically (e.i. It doesn't matter if there are some text files in the directory).
 
 ## Command line arguments
 
-`--dd RESOLUTION`  Init DynamicDataset with specific resolution (e.g. `--dd=1024` or `--dd=1024x1024`)
-
-`--dd-crop`      Cropping type: 'center' or 'random' (default='random')
-`--dd-scale`     Scale/zoom factor. 1 = no zoom, 0.8 = crop up to 20%',    type=click.FloatRange(min=0.5, max=1), default=0.8, show_default=True)
-`--dd-ac-prob`,  Autocontrast probability (default: %(default)s)",         type=click.FloatRange(min=0, max=1), default=0.8, show_default=True)
-`--dd-ac-cutoff` Maximum percent to cut off from the histogram (default: %(default)s)", type=float, default=2, show_default=True)
+Dynamic Dataset adds the following command line options to StyleGan3:
+* `--dd` Tells Stylegan to use DynamicDataset instead of the original [ImageFolderDataset](https://github.com/vsemecky/stylegan3/blob/a5d04260b4037c0d2e3c3cb5ab43ce5b84de65d7/training/dataset.py#L164)
+* `--dd-res`       Requested resolution (default `--dd-res=1024x1024`)
+* `--dd-crop`      Cropping type: 'center' or 'random'
+* `--dd-scale`     Scale/zoom factor. 1 = no zoom, 0.8 = crop up to 20%',    type=click.FloatRange(min=0.5, max=1), default=0.8, show_default=True)
+* `--dd-ac-prob`   Autocontrast probability
+* `--dd-ac-cutoff` Maximum percent to cut off from the histogram
 
 <table>
 <td>
