@@ -23,6 +23,7 @@ class DynamicDataset(Dataset):
         path,
         resolution,
         extend,
+        anamorphic,
         crop="random",
         scale=0.8,
         autocontrast_probability=0,
@@ -34,17 +35,24 @@ class DynamicDataset(Dataset):
     ):
         self._path = path
         self._zipfile = None
-        self._width, self._height = self.decode_resolution(resolution)
-        self._ratio = self._width / self._height
+        self._resolution = self.decode_resolution(resolution)  # Final resolution of the network - tuple (width, height)
         self._crop = crop
         self._scale = scale
         self._use_labels = use_labels
-        self._size = (self._width, self._height)
         self._autocontrast_probability = autocontrast_probability
         self._autocontrast_max_cutoff = autocontrast_max_cutoff
+        self._anamorphic = anamorphic
         self._extend = extend
         if extend:
             self._extend_width, self._extend_height = self.decode_resolution(extend)
+
+        if anamorphic:
+            self._anamorphic_resolution = self.decode_resolution(anamorphic)  # tuple (width, height)
+            self._crop_size = self.decode_resolution(anamorphic)  # tuple (width, height)
+            print("Anamorphic: ", self._crop_size)
+        else:
+            self._crop_size = self._resolution  # tuple (width, height)
+            print("Normal square: ", self._crop_size)
 
         # ImageFolderInit
         if os.path.isdir(self._path):
@@ -64,7 +72,6 @@ class DynamicDataset(Dataset):
 
         name = os.path.splitext(os.path.basename(self._path))[0]
         raw_shape = [len(self._image_fnames)] + list(self._load_raw_image(0).shape)
-        print(raw_shape)
 
         super().__init__(name=name, raw_shape=raw_shape, use_labels=use_labels, xflip=xflip, yflip=yflip, **super_kwargs)
 
@@ -115,40 +122,23 @@ class DynamicDataset(Dataset):
 
         # Crops
         if self._crop == "center":
-            centering = (0.5, 0.5)  # Center crop
             image_pil = PIL.ImageOps.fit(
                 image_pil,
-                size=self._size,
+                size=self._crop_size,
                 method=PIL.Image.LANCZOS,
-                centering=centering
-            )
-        elif self._crop == "old_random":  # todo Odstranit
-            centering = (random.uniform(0, 1), random.uniform(0, 1))  # Random crop
-            image_pil = PIL.ImageOps.fit(
-                image_pil,
-                size=self._size,
-                method=PIL.Image.LANCZOS,
-                centering=centering
+                centering=(0.5, 0.5)  # Center crop
             )
         else:
-            # image_pil = self.random_zoom_crop(image=image_pil)
-            if image_pil.width <= self._width or image_pil.height <= self._height:
-                # If image too small to zoom-in, do simple random crop without zooming
-                # @todo Místo jiného zpracování upscalovat aby i šířka i výška splňovali minimum
-                image_pil = PIL.ImageOps.fit(
-                    image_pil,
-                    size=self._size,
-                    method=PIL.Image.LANCZOS,
-                    centering=(random.uniform(0, 1), random.uniform(0, 1))
-                )
-            else:
-                image_pil = self.random_zoom_crop(image=image_pil)
+            image_pil = self.random_zoom_crop(image=image_pil)
 
         if self._extend:
             extended_pil = PIL.Image.new(mode="RGB", size=(self._extend_width, self._extend_height), color=(0, 0, 0))
             offset = ((self._extend_width - image_pil.width) // 2, (self._extend_height - image_pil.height) // 2)
             extended_pil.paste(image_pil, offset)
             image_pil = extended_pil
+
+        if self._anamorphic:
+            image_pil = image_pil.resize(self._resolution)
 
         image_np = np.array(image_pil).transpose(2, 0, 1)  # HWC => CHW
         return image_np
@@ -173,27 +163,35 @@ class DynamicDataset(Dataset):
         return labels
 
     def random_zoom_crop(self, image: PIL.Image):
-        max_window_width, max_window_height = self.get_max_window_size(image)
-        scale = random.uniform(max(self._width / max_window_width, self._scale), 1)  # Random scale
+        # If image too small to zoom-in, do simple random crop without zooming
+        if image.width <= self._crop_size[0] or image.height <= self._crop_size[1]:
+            centering = (random.uniform(0, 1), random.uniform(0, 1))  # random centering
+            image_cropped = PIL.ImageOps.fit(image, size=self._crop_size, method=PIL.Image.LANCZOS, centering=centering)
+            return image_cropped
+
+        # Image is big enough
+        max_window_width, max_window_height = self.get_max_window_size(image, ratio=self._crop_size[0] / self._height)
+        scale = random.uniform(max(self._crop_size[0] / max_window_width, self._scale), 1)  # Random scale
         window_width = round(scale * max_window_width)
         window_height = round(scale * max_window_height)
         left = random.randint(0, image.width - window_width)
         top = random.randint(0, image.height - window_height)
         crop_box = (left, top, left + window_width, top + window_height)
-        image_cropped = image.resize(size=self._size, resample=PIL.Image.LANCZOS, box=crop_box)
+        image_cropped = image.resize(size=self._crop_size, resample=PIL.Image.LANCZOS, box=crop_box)
 
         return image_cropped
 
-    def get_max_window_size(self, image: PIL.Image):
+    @staticmethod
+    def get_max_window_size(image: PIL.Image, ratio: float):
         """ Returns maximum size (width, height) of inscribed rectangle with specific aspect ratio """
         width, height = image.size
         current_ratio = width / height
-        if self._ratio == current_ratio:
+        if ratio == current_ratio:
             return width, height
-        elif self._ratio > current_ratio:
-            return width, round(width / self._ratio)
-        elif self._ratio < current_ratio:
-            return round(height * self._ratio), height
+        elif ratio > current_ratio:
+            return width, round(width / ratio)
+        elif ratio < current_ratio:
+            return round(height * ratio), height
 
     @staticmethod
     def decode_resolution(resolution: str):

@@ -4,7 +4,7 @@ Before, for offline augmentation I used my simpler command-line tool <a href="ht
 which I created for the <a href="https://thisbeachdoesnotexist.com/">This Beach Does Not Exist</a>. Now I've decided to integrate Augmentor directly into the <a href="https://github.com/vsemecky/stylegan3">StyleGan3</a>
 as a new dataset type that will do the augmentation on the fly, so you won't need the tools like `dataset_tool.py`.
 
-It is based on my simpler Augmentor command-line tool, which I used for offline augmentation for <a href="https://wwwthisbeachdoesnotexist.com">This Beach Does Not Exist</a>.
+It is based on my simpler Augmentor command-line tool, which I used for offline augmentation for <a href="https://thisbeachdoesnotexist.com">This Beach Does Not Exist</a>.
 
 I have now decided to integrate Augmentor directly into StyleGan3 as a new dataset type that will do augmentation on the fly.
 

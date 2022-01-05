@@ -191,6 +191,7 @@ def locate_latest_pkl(outdir: str):
 @click.option("--dd-ac-prob",   help="Autocontrast probability (default: %(default)s)",         type=click.FloatRange(min=0, max=1), default=0.8, show_default=True)
 @click.option("--dd-ac-cutoff", help="Max. percent to cut off from the histogram (default: %(default)s)", type=float, default=2, show_default=True)
 @click.option('--dd-extend',    help='EXPERIMENTAL: Extend background to another resolution (e.g. --dd-extend=1024x1024)', type=str)
+@click.option('--dd-anamorphic',help='EXPERIMENTAL: Allows to train Extend background to another resolution (e.g. --dd-anamorphic=1280x720 --dd-res=1024x1024)', type=str)
 
 # Misc settings.
 @click.option('--desc',         help='String to include in result dir name', metavar='STR',     type=str)
