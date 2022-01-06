@@ -170,7 +170,7 @@ class DynamicDataset(Dataset):
             return image_cropped
 
         # Image is big enough
-        max_window_width, max_window_height = self.get_max_window_size(image, ratio=self._crop_size[0] / self._height)
+        max_window_width, max_window_height = self.get_max_window_size(image, ratio=self._crop_size[0] / self._crop_size[1])
         scale = random.uniform(max(self._crop_size[0] / max_window_width, self._scale), 1)  # Random scale
         window_width = round(scale * max_window_width)
         window_height = round(scale * max_window_height)
