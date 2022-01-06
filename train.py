@@ -112,6 +112,7 @@ def init_dataset_kwargs(opts):
                 yflip=opts.mirrory,
                 resolution=opts.dd_res,
                 extend=opts.dd_extend,
+                anamorphic=opts.dd_anamorphic,
                 crop=opts.dd_crop,
                 scale=opts.dd_scale,
                 autocontrast_probability=opts.dd_ac_prob,
