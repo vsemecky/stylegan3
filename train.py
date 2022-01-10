@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2021, NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
+# Copyright (c) 2021, NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
 #
 # NVIDIA CORPORATION and its licensors retain all intellectual property
 # and proprietary rights in and to this software, related documentation
@@ -148,7 +148,7 @@ def locate_latest_pkl(outdir: str):
 @click.option('--mirror',       help='Enable dataset x-flips', metavar='BOOL',                  type=bool, default=False, show_default=True)
 @click.option('--mirrory',      help='Enable dataset y-flips', metavar='BOOL',                  type=bool, default=False, show_default=True)
 @click.option('--aug',          help='Augmentation mode',                                       type=click.Choice(['noaug', 'ada', 'fixed']), default='ada', show_default=True)
-@click.option('--augpipe',      help='Augmentation pipeline',                                   type=click.Choice(['bg', 'bgc']), default='bgc', show_default=True)
+@click.option('--augpipe',      help='Augmentation pipeline',                                   type=click.Choice(['b','bg', 'bgc']), default='bgc', show_default=True)
 @click.option('--resume',       help='Resume from given network pickle (PATH, URL or "latest")', metavar='[PATH|URL|"latest"]',  type=str)
 @click.option('--freezed',      help='Freeze first layers of D', metavar='INT',                 type=click.IntRange(min=0), default=0, show_default=True)
 @click.option('--initstrength', help='Override ADA strength at start',                          type=click.FloatRange(min=0))
