@@ -18,6 +18,7 @@ import PIL.Image
 import numpy as np
 import torch
 import dnnlib
+from dynamic_dataset.dynamic_dataset import DynamicDataset
 from torch_utils import misc
 from torch_utils import training_stats
 from torch_utils.ops import conv2d_gradfix
@@ -30,6 +31,7 @@ from metrics import metric_main
 #----------------------------------------------------------------------------
 
 def setup_snapshot_image_grid(training_set, random_seed=0):
+    print(training_set)
     rnd = np.random.RandomState(random_seed)
     gw = np.clip(7680 // training_set.image_shape[2], 7, 32)
     gh = np.clip(4320 // training_set.image_shape[1], 4, 32)
@@ -68,13 +70,13 @@ def setup_snapshot_image_grid(training_set, random_seed=0):
 
 #----------------------------------------------------------------------------
 
-def save_image_grid(img, fname, drange, grid_size):
-    grid_pil = get_image_grid(img, drange, grid_size)
+def save_image_grid(img, fname, drange, grid_size, anamorphic=None):
+    grid_pil = get_image_grid(img, drange, grid_size, anamorphic)
     grid_pil.save(fname)
 
 #----------------------------------------------------------------------------
 
-def get_image_grid(img, drange, grid_size):
+def get_image_grid(img, drange, grid_size, anamorphic=None):
     lo, hi = drange
     img = np.asarray(img, dtype=np.float32)
     img = (img - lo) * (255 / (hi - lo))
@@ -88,9 +90,18 @@ def get_image_grid(img, drange, grid_size):
 
     assert C in [1, 3]
     if C == 1:
-        return PIL.Image.fromarray(img[:, :, 0], 'L')
+        pil_image = PIL.Image.fromarray(img[:, :, 0], 'L')
     if C == 3:
-        return PIL.Image.fromarray(img, 'RGB')
+        pil_image = PIL.Image.fromarray(img, 'RGB')
+
+    # If image is anamorphic, resize back to the original resoution
+    anamorphic = "1280x720"
+
+    if anamorphic:
+        anamorphic_size = DynamicDataset.decode_resolution(anamorphic)
+        pil_image = pil_image.resize(anamorphic_size)
+
+    return pil_image
 
 #----------------------------------------------------------------------------
 
@@ -226,7 +237,7 @@ def training_loop(
     if rank == 0:
         print('Exporting sample images...')
         grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
-        save_image_grid(images, os.path.join(run_dir, 'reals.jpg'), drange=[0,255], grid_size=grid_size)
+        save_image_grid(images, os.path.join(run_dir, 'reals.jpg'), drange=[0, 255], grid_size=grid_size, anamorphic=opt)
 
         # Generate reals-dynamic.mp4 (for DynamicDataset only)
         if False and training_set_kwargs['class_name'] == 'training.dataset_dynamic.DynamicDataset':
@@ -237,7 +248,8 @@ def training_loop(
                 print(".", end="")
                 grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
                 image_pil = get_image_grid(images, drange=[0, 255], grid_size=grid_size)
-                image_clip = ImageClip(np.array(image_pil)).resize(height=1080).set_duration(0.5)
+                # @todo Zmenšit image_pil kvůli rychlosti na max. výšku 1080p
+                image_clip = ImageClip(np.array(image_pil)).resize(height=1080).set_duration(0.5) # Tady resize zrušit
                 image_clips.append(image_clip)
 
             concatenate_videoclips(image_clips).write_videofile(
