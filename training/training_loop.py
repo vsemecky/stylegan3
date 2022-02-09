@@ -98,7 +98,8 @@ def get_image_grid(img, drange, grid_size, anamorphic=None):
     anamorphic = "1280x720"
 
     if anamorphic:
-        anamorphic_size = DynamicDataset.decode_resolution(anamorphic)
+        anamorphic_width, anamorphic_height = DynamicDataset.decode_resolution(anamorphic)
+        anamorphic_size = (grid_size[0] * anamorphic_width, grid_size[1] * anamorphic_height)
         pil_image = pil_image.resize(anamorphic_size)
 
     return pil_image
