@@ -95,8 +95,6 @@ def get_image_grid(img, drange, grid_size, anamorphic=None):
         pil_image = PIL.Image.fromarray(img, 'RGB')
 
     # If image is anamorphic, resize back to the original resoution
-    anamorphic = "1280x720"
-
     if anamorphic:
         anamorphic_width, anamorphic_height = DynamicDataset.decode_resolution(anamorphic)
         anamorphic_size = (grid_size[0] * anamorphic_width, grid_size[1] * anamorphic_height)
@@ -238,7 +236,7 @@ def training_loop(
     if rank == 0:
         print('Exporting sample images...')
         grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
-        save_image_grid(images, os.path.join(run_dir, 'reals.jpg'), drange=[0, 255], grid_size=grid_size, anamorphic=opt)
+        save_image_grid(images, os.path.join(run_dir, 'reals.jpg'), drange=[0, 255], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
 
         # Generate reals-dynamic.mp4 (for DynamicDataset only)
         if False and training_set_kwargs['class_name'] == 'training.dataset_dynamic.DynamicDataset':
@@ -248,7 +246,7 @@ def training_loop(
             for i in range(0, frames_count):
                 print(".", end="")
                 grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
-                image_pil = get_image_grid(images, drange=[0, 255], grid_size=grid_size)
+                image_pil = get_image_grid(images, drange=[0, 255], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
                 # @todo Zmenšit image_pil kvůli rychlosti na max. výšku 1080p
                 image_clip = ImageClip(np.array(image_pil)).resize(height=1080).set_duration(0.5) # Tady resize zrušit
                 image_clips.append(image_clip)
@@ -262,7 +260,7 @@ def training_loop(
         grid_z = torch.randn([labels.shape[0], G.z_dim], device=device).split(batch_gpu)
         grid_c = torch.from_numpy(labels).to(device).split(batch_gpu)
         images = torch.cat([G_ema(z=z, c=c, noise_mode='const').cpu() for z, c in zip(grid_z, grid_c)]).numpy()
-        save_image_grid(images, os.path.join(run_dir, 'fakes_init.jpg'), drange=[-1,1], grid_size=grid_size)
+        save_image_grid(images, os.path.join(run_dir, 'fakes_init.jpg'), drange=[-1,1], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
 
     # Initialize logs.
     if rank == 0:
@@ -391,7 +389,7 @@ def training_loop(
         # Save image snapshot.
         if (rank == 0) and (image_snapshot_ticks is not None) and (done or cur_tick % image_snapshot_ticks == 0):
             images = torch.cat([G_ema(z=z, c=c, noise_mode='const').cpu() for z, c in zip(grid_z, grid_c)]).numpy()
-            save_image_grid(images, os.path.join(run_dir, f'fakes{cur_nimg//1000:06d}.jpg'), drange=[-1,1], grid_size=grid_size)
+            save_image_grid(images, os.path.join(run_dir, f'fakes{cur_nimg//1000:06d}.jpg'), drange=[-1,1], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
 
         # Save network snapshot.
         snapshot_pkl = None
