@@ -151,7 +151,8 @@ class DynamicDataset(Dataset):
         for fname in self._all_fnames:
             p = pathlib.Path(fname)
             try:
-                label = int(p.parts[0])
+                # label = int(p.parts[0])
+                label = int(re.search(r'\d+', p.parts[0]).group())
                 labels[fname] = label
             except:
                 print(f"Invalid label '{p.parts[0]}' in file path '{fname}'")
