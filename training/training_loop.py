@@ -32,8 +32,15 @@ from metrics import metric_main
 
 def setup_snapshot_image_grid(training_set, random_seed=0):
     rnd = np.random.RandomState(random_seed)
-    gw = np.clip(7680 // training_set.image_shape[2], 7, 32)
-    gh = np.clip(4320 // training_set.image_shape[1], 4, 32)
+
+    if training_set.anamorphic:
+        # Anamorphic grid
+        gw = np.clip(7680 // training_set.anamorphic_resolution[0], 7, 32)
+        gh = np.clip(4320 // training_set.anamorphic_resolution[1], 4, 32)
+    else:
+        # Regular grid
+        gw = np.clip(7680 // training_set.image_shape[2], 7, 32)
+        gh = np.clip(4320 // training_set.image_shape[1], 4, 32)
 
     # No labels => show random subset of training samples.
     if not training_set.has_labels:
@@ -65,7 +72,7 @@ def setup_snapshot_image_grid(training_set, random_seed=0):
 
     # Load data.
     images, labels = zip(*[training_set[i] for i in grid_indices])
-    return (gw, gh), np.stack(images), np.stack(labels)
+    return (gw, gh), np.stack(images), np.stack(labels)  # grid_size, images, labels
 
 #----------------------------------------------------------------------------
 

@@ -41,13 +41,13 @@ class DynamicDataset(Dataset):
         self._use_labels = use_labels
         self._autocontrast_probability = autocontrast_probability
         self._autocontrast_max_cutoff = autocontrast_max_cutoff
-        self._anamorphic = anamorphic
+        self.anamorphic = anamorphic
         self._extend = extend
         if extend:
             self._extend_width, self._extend_height = self.decode_resolution(extend)
 
         if anamorphic:
-            self._anamorphic_resolution = self.decode_resolution(anamorphic)  # tuple (width, height)
+            self.anamorphic_resolution = self.decode_resolution(anamorphic)  # tuple (width, height)
             self._crop_size = self.decode_resolution(anamorphic)  # tuple (width, height)
             print("Anamorphic: ", self._crop_size)
         else:
@@ -137,7 +137,7 @@ class DynamicDataset(Dataset):
             extended_pil.paste(image_pil, offset)
             image_pil = extended_pil
 
-        if self._anamorphic:
+        if self.anamorphic:
             image_pil = image_pil.resize(self._resolution)
 
         image_np = np.array(image_pil).transpose(2, 0, 1)  # HWC => CHW
