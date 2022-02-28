@@ -33,10 +33,13 @@ from metrics import metric_main
 def setup_snapshot_image_grid(training_set, random_seed=0):
     rnd = np.random.RandomState(random_seed)
 
-    if training_set.anamorphic:
+    if training_set._anamorphic:
         # Anamorphic grid
+        min_gh = 4
+        if training_set._use_labels:
+            min_gh = max(min_gh, training_set.label_dim)  # If conditional: minimum rows is label count
         gw = np.clip(7680 // training_set.anamorphic_resolution[0], 7, 32)
-        gh = np.clip(4320 // training_set.anamorphic_resolution[1], 4, 32)
+        gh = np.clip(4320 // training_set.anamorphic_resolution[1], min_gh, 32)
     else:
         # Regular grid
         gw = np.clip(7680 // training_set.image_shape[2], 7, 32)
