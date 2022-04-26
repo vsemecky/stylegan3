@@ -100,13 +100,33 @@ def launch_training(c, desc, outdir, dry_run):
 
 #----------------------------------------------------------------------------
 
-def init_dataset_kwargs(data):
+def init_dataset_kwargs(opts):
     try:
-        dataset_kwargs = dnnlib.EasyDict(class_name='training.dataset.ImageFolderDataset', path=data, use_labels=True, max_size=None, xflip=False)
-        dataset_obj = dnnlib.util.construct_class_by_name(**dataset_kwargs) # Subclass of training.dataset.Dataset.
-        dataset_kwargs.resolution = dataset_obj.resolution # Be explicit about resolution.
-        dataset_kwargs.use_labels = dataset_obj.has_labels # Be explicit about labels.
-        dataset_kwargs.max_size = len(dataset_obj) # Be explicit about dataset size.
+        if opts.dd:
+            # Use Dynamic Dataset
+            dataset_kwargs = dnnlib.EasyDict(
+                class_name='dynamic_dataset.dynamic_dataset.DynamicDataset',
+                path=opts.data,
+                use_labels=opts.cond,
+                xflip=opts.mirror,
+                yflip=opts.mirrory,
+                resolution=opts.dd_res,
+                extend=opts.dd_extend,
+                anamorphic=opts.dd_anamorphic,
+                crop=opts.dd_crop,
+                scale=opts.dd_scale,
+                autocontrast_probability=opts.dd_ac_prob,
+                autocontrast_max_cutoff=opts.dd_ac_cutoff,
+            )
+            dataset_obj = dnnlib.util.construct_class_by_name(**dataset_kwargs)
+            dataset_kwargs.max_size = len(dataset_obj)
+        else:
+            # Use original ImageFolderDataset
+            dataset_kwargs = dnnlib.EasyDict(class_name='training.dataset.ImageFolderDataset', path=opts.data, use_labels=True, max_size=None, xflip=False)
+            dataset_obj = dnnlib.util.construct_class_by_name(**dataset_kwargs)  # Subclass of training.dataset.Dataset.
+            dataset_kwargs.resolution = dataset_obj.resolution  # Be explicit about resolution.
+            dataset_kwargs.use_labels = dataset_obj.has_labels  # Be explicit about labels.
+            dataset_kwargs.max_size = len(dataset_obj)  # Be explicit about dataset size.
         return dataset_kwargs, dataset_obj.name
     except IOError as err:
         raise click.ClickException(f'--data: {err}')
@@ -133,7 +153,7 @@ def locate_latest_pkl(outdir: str):
 
 #----------------------------------------------------------------------------
 
-@click.command()
+@click.command(context_settings=dict(max_content_width=9999))
 
 # Required.
 @click.option('--outdir',       help='Where to save the results', metavar='DIR',                required=True)
@@ -163,6 +183,16 @@ def locate_latest_pkl(outdir: str):
 @click.option('--dlr',          help='D learning rate', metavar='FLOAT',                        type=click.FloatRange(min=0), default=0.002, show_default=True)
 @click.option('--map-depth',    help='Mapping network depth  [default: varies]', metavar='INT', type=click.IntRange(min=1))
 @click.option('--mbstd-group',  help='Minibatch std group size', metavar='INT',                 type=click.IntRange(min=1), default=4, show_default=True)
+
+# Dynamic Dataset options
+@click.option('--dd',           help='Tells Stylegan to use DynamicDataset instead of the original ImageFolderDataset', is_flag=True)
+@click.option('--dd-res',       help='The desired images resolution (e.g. --dd-res=1024x1024)', type=str, default="1024x1024", show_default=True)
+@click.option('--dd-crop',      help='Cropping type',                                           type=click.Choice(['center', 'random']), default="center", show_default=True)
+@click.option('--dd-scale',     help='Scale/zoom factor. 1 = no zoom, 0.8 = crop up to 20%',    type=click.FloatRange(min=0.5, max=1), default=0.8, show_default=True)
+@click.option("--dd-ac-prob",   help="Autocontrast probability (default: %(default)s)",         type=click.FloatRange(min=0, max=1), default=0.8, show_default=True)
+@click.option("--dd-ac-cutoff", help="Max. percent to cut off from the histogram (default: %(default)s)", type=float, default=2, show_default=True)
+@click.option('--dd-extend',    help='EXPERIMENTAL: Extend background to another resolution (e.g. --dd-extend=1024x1024)', type=str)
+@click.option('--dd-anamorphic',help='EXPERIMENTAL: Allows to train Extend background to another resolution (e.g. --dd-anamorphic=1280x720 --dd-res=1024x1024)', type=str)
 
 # Misc settings.
 @click.option('--desc',         help='String to include in result dir name', metavar='STR',     type=str)
@@ -210,7 +240,8 @@ def main(**kwargs):
     c.data_loader_kwargs = dnnlib.EasyDict(pin_memory=True, prefetch_factor=2)
 
     # Training set.
-    c.training_set_kwargs, dataset_name = init_dataset_kwargs(data=opts.data)
+    c.training_set_kwargs, dataset_name = init_dataset_kwargs(opts=opts)
+
     if opts.cond and not c.training_set_kwargs.use_labels:
         raise click.ClickException('--cond=True requires labels specified in dataset.json')
     c.training_set_kwargs.use_labels = opts.cond

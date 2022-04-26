@@ -18,10 +18,12 @@ import PIL.Image
 import numpy as np
 import torch
 import dnnlib
+from dynamic_dataset.dynamic_dataset import DynamicDataset
 from torch_utils import misc
 from torch_utils import training_stats
 from torch_utils.ops import conv2d_gradfix
 from torch_utils.ops import grid_sample_gradfix
+from moviepy.editor import ImageClip, concatenate_videoclips
 
 import legacy
 from metrics import metric_main
@@ -30,8 +32,18 @@ from metrics import metric_main
 
 def setup_snapshot_image_grid(training_set, random_seed=0):
     rnd = np.random.RandomState(random_seed)
-    gw = np.clip(7680 // training_set.image_shape[2], 7, 32)
-    gh = np.clip(4320 // training_set.image_shape[1], 4, 32)
+
+    if training_set._anamorphic:
+        # Anamorphic grid
+        min_gh = 4
+        if training_set._use_labels:
+            min_gh = max(min_gh, training_set.label_dim)  # If conditional: minimum rows is label count
+        gw = np.clip(7680 // training_set.anamorphic_resolution[0], 7, 32)
+        gh = np.clip(4320 // training_set.anamorphic_resolution[1], min_gh, 32)
+    else:
+        # Regular grid
+        gw = np.clip(7680 // training_set.image_shape[2], 7, 32)
+        gh = np.clip(4320 // training_set.image_shape[1], 4, 32)
 
     # No labels => show random subset of training samples.
     if not training_set.has_labels:
@@ -63,11 +75,17 @@ def setup_snapshot_image_grid(training_set, random_seed=0):
 
     # Load data.
     images, labels = zip(*[training_set[i] for i in grid_indices])
-    return (gw, gh), np.stack(images), np.stack(labels)
+    return (gw, gh), np.stack(images), np.stack(labels)  # grid_size, images, labels
 
 #----------------------------------------------------------------------------
 
-def save_image_grid(img, fname, drange, grid_size):
+def save_image_grid(img, fname, drange, grid_size, anamorphic=None):
+    grid_pil = get_image_grid(img, drange, grid_size, anamorphic)
+    grid_pil.save(fname)
+
+#----------------------------------------------------------------------------
+
+def get_image_grid(img, drange, grid_size, anamorphic=None):
     lo, hi = drange
     img = np.asarray(img, dtype=np.float32)
     img = (img - lo) * (255 / (hi - lo))
@@ -81,9 +99,17 @@ def save_image_grid(img, fname, drange, grid_size):
 
     assert C in [1, 3]
     if C == 1:
-        PIL.Image.fromarray(img[:, :, 0], 'L').save(fname)
+        pil_image = PIL.Image.fromarray(img[:, :, 0], 'L')
     if C == 3:
-        PIL.Image.fromarray(img, 'RGB').save(fname)
+        pil_image = PIL.Image.fromarray(img, 'RGB')
+
+    # If image is anamorphic, resize back to the original resoution
+    if anamorphic:
+        anamorphic_width, anamorphic_height = DynamicDataset.decode_resolution(anamorphic)
+        anamorphic_size = (grid_size[0] * anamorphic_width, grid_size[1] * anamorphic_height)
+        pil_image = pil_image.resize(anamorphic_size)
+
+    return pil_image
 
 #----------------------------------------------------------------------------
 
@@ -219,11 +245,31 @@ def training_loop(
     if rank == 0:
         print('Exporting sample images...')
         grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
-        save_image_grid(images, os.path.join(run_dir, 'reals.jpg'), drange=[0,255], grid_size=grid_size)
+        save_image_grid(images, os.path.join(run_dir, 'reals.jpg'), drange=[0, 255], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
+
+        # Generate reals-dynamic.mp4 (for DynamicDataset only)
+        if False and training_set_kwargs['class_name'] == 'training.dataset_dynamic.DynamicDataset':
+            print('Exporting reals-dynamic.mp4 for DynamicDataset...')
+            image_clips = []
+            frames_count = 60
+            for i in range(0, frames_count):
+                print(".", end="")
+                grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
+                image_pil = get_image_grid(images, drange=[0, 255], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
+                # @todo Zmenšit image_pil kvůli rychlosti na max. výšku 1080p
+                image_clip = ImageClip(np.array(image_pil)).resize(height=1080).set_duration(0.5) # Tady resize zrušit
+                image_clips.append(image_clip)
+
+            concatenate_videoclips(image_clips).write_videofile(
+                filename=os.path.join(run_dir, 'reals-dynamic.mp4'),
+                fps=2,
+                threads=os.cpu_count()
+            )
+
         grid_z = torch.randn([labels.shape[0], G.z_dim], device=device).split(batch_gpu)
         grid_c = torch.from_numpy(labels).to(device).split(batch_gpu)
         images = torch.cat([G_ema(z=z, c=c, noise_mode='const').cpu() for z, c in zip(grid_z, grid_c)]).numpy()
-        save_image_grid(images, os.path.join(run_dir, 'fakes_init.jpg'), drange=[-1,1], grid_size=grid_size)
+        save_image_grid(images, os.path.join(run_dir, 'fakes_init.jpg'), drange=[-1,1], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
 
     # Initialize logs.
     if rank == 0:
@@ -352,7 +398,7 @@ def training_loop(
         # Save image snapshot.
         if (rank == 0) and (image_snapshot_ticks is not None) and (done or cur_tick % image_snapshot_ticks == 0):
             images = torch.cat([G_ema(z=z, c=c, noise_mode='const').cpu() for z, c in zip(grid_z, grid_c)]).numpy()
-            save_image_grid(images, os.path.join(run_dir, f'fakes{cur_nimg//1000:06d}.jpg'), drange=[-1,1], grid_size=grid_size)
+            save_image_grid(images, os.path.join(run_dir, f'fakes{cur_nimg//1000:06d}.jpg'), drange=[-1,1], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
 
         # Save network snapshot.
         snapshot_pkl = None
