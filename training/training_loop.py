@@ -245,30 +245,18 @@ def training_loop(
         print('Exporting sample images...')
         grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
         save_image_grid(images, os.path.join(run_dir, 'reals.jpg'), drange=[0, 255], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
+
+        # Dynamic Dataset: generate animated `reals.gif`
         if training_set_kwargs['class_name'] == 'dynamic_dataset.dynamic_dataset.DynamicDataset':
-            print('Exporting dynamic reals images...')
+            print('Dynamic Dataset: Exporting animated samples `reals_dynamic.webp`...')
+            frames = []
             for r in range(0, 10):
                 grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
-                save_image_grid(images, os.path.join(run_dir, f'reals-{r}.jpg'), drange=[0, 255], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
-
-        # Generate reals-dynamic.mp4 (for DynamicDataset only)
-        if False and training_set_kwargs['class_name'] == 'training.dataset_dynamic.DynamicDataset':
-            print('Exporting reals-dynamic.mp4 for DynamicDataset...')
-            image_clips = []
-            frames_count = 60
-            for i in range(0, frames_count):
-                print(".", end="")
-                grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
-                image_pil = get_image_grid(images, drange=[0, 255], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
-                # @todo Zmenšit image_pil kvůli rychlosti na max. výšku 1080p
-                image_clip = ImageClip(np.array(image_pil)).resize(height=1080).set_duration(0.5) # Tady resize zrušit
-                image_clips.append(image_clip)
-
-            concatenate_videoclips(image_clips).write_videofile(
-                filename=os.path.join(run_dir, 'reals-dynamic.mp4'),
-                fps=2,
-                threads=os.cpu_count()
-            )
+                reals_image = get_image_grid(images, drange=[0, 255], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
+                reals_image = reals_image.resize(size=(reals_image.width // 2, reals_image.height // 2), resample=PIL.Image.LANCZOS)  # Reduce size
+                frames.append(reals_image)
+            first_frame = frames.pop()
+            first_frame.save(os.path.join(run_dir, 'reals_dynamic.webp'), save_all=True, append_images=frames, loop=0, duration=400)
 
         grid_z = torch.randn([labels.shape[0], G.z_dim], device=device).split(batch_gpu)
         grid_c = torch.from_numpy(labels).to(device).split(batch_gpu)
