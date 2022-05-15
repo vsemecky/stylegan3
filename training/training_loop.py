@@ -245,6 +245,11 @@ def training_loop(
         print('Exporting sample images...')
         grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
         save_image_grid(images, os.path.join(run_dir, 'reals.jpg'), drange=[0, 255], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
+        if training_set_kwargs['class_name'] == 'dynamic_dataset.dynamic_dataset.DynamicDataset':
+            print('Exporting dynamic reals images...')
+            for r in range(0, 10):
+                grid_size, images, labels = setup_snapshot_image_grid(training_set=training_set)
+                save_image_grid(images, os.path.join(run_dir, f'reals-{r}.jpg'), drange=[0, 255], grid_size=grid_size, anamorphic=training_set_kwargs.anamorphic)
 
         # Generate reals-dynamic.mp4 (for DynamicDataset only)
         if False and training_set_kwargs['class_name'] == 'training.dataset_dynamic.DynamicDataset':

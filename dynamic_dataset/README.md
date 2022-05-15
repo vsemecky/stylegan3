@@ -9,7 +9,7 @@ Alternative dataset loader for StyleGan3 that uses raw images with different res
   - You don't need metadata file `dataset.json` for labels
 - **Preprocessing images on the fly**
   - Images are converted to 24-bit RGB
-  - Images are cropped and resized to the requested resolution according to parameters `--dd-res`, `--dd-crop` and `--dd-scale`
+  - Images are cropped and resized to the requested resolution according to parameters `--dd-res`, `--dd-focus` and `--dd-max-bleed`
   - Images are randomly autocontrasted according to parameters `--dd-ac-prob` and `--dd-ac-cutoff`
   - Note: Since the images are cropped, resized and autocontrasted differently each time they are used, this leads to **additional augmentation**
 - **Simple directory structure**
@@ -79,11 +79,11 @@ Alternative dataset loader for StyleGan3 that uses raw images with different res
 
 Dynamic Dataset adds the following command line options to StyleGan3:
 * `--dd` Tells Stylegan to use DynamicDataset instead of the original [ImageFolderDataset](https://github.com/vsemecky/stylegan3/blob/a5d04260b4037c0d2e3c3cb5ab43ce5b84de65d7/training/dataset.py#L164)
-* `--dd-res`       Requested resolution (default `--dd-res=1024x1024`)
-* `--dd-crop`      Cropping type: `center` or `random` (default `--dd-crop=random`)
-* `--dd-scale`     Scale/zoom factor. 1 = no zoom, 0.8 = crop up to 20% (default: `--dd-scale=0.8`)
-* `--dd-ac-prob`   Autocontrast probability (default: `--dd-ac-prob=0.8`)
-* `--dd-ac-cutoff` Maximum percent to cut off from the histogram (default: `--dd-ac-cutoff=2`)
+* `--dd-res`         Requested resolution (default `--dd-res=1024x1024`)
+* `--dd-focus`       Cropping type: `center` or `random` (default `--dd-focus=random`)
+* `--dd-max-bleed`   How much can we crop into the image. Use 0.01 for one percent (default: `--dd-max-bleed=0.1`)
+* `--dd-ac-prob`     Autocontrast probability (default: `--dd-ac-prob=0.8`)
+* `--dd-ac-cutoff`   Maximum percent to cut off from the histogram (default: `--dd-ac-cutoff=2`)
 
 
 ## Usage

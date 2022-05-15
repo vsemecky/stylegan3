@@ -22,10 +22,9 @@ class DynamicDataset(Dataset):
         self,
         path,
         resolution,
-        extend,
         anamorphic,
-        crop="random",
-        scale=0.8,
+        focus="random",
+        max_bleed=0.1,
         autocontrast_probability=0,
         autocontrast_max_cutoff=0,
         use_labels=False,
@@ -36,15 +35,12 @@ class DynamicDataset(Dataset):
         self._path = path
         self._zipfile = None
         self._resolution = self.decode_resolution(resolution)  # Final resolution of the network - tuple (width, height)
-        self._crop = crop
-        self._scale = scale
+        self._focus = focus
+        self._max_bleed = max_bleed
         self._use_labels = use_labels
         self._autocontrast_probability = autocontrast_probability
         self._autocontrast_max_cutoff = autocontrast_max_cutoff
         self._anamorphic = anamorphic
-        self._extend = extend
-        if extend:
-            self._extend_width, self._extend_height = self.decode_resolution(extend)
 
         if anamorphic:
             self.anamorphic_resolution = self.decode_resolution(anamorphic)  # tuple (width, height)
@@ -121,25 +117,18 @@ class DynamicDataset(Dataset):
             image_pil = self.autocontrast(image_pil, cutoff=cutoff)
 
         # Crops
-        if self._crop == "center":
-            image_pil = PIL.ImageOps.fit(
-                image_pil,
-                size=self._crop_size,
-                method=PIL.Image.LANCZOS,
-                centering=(0.5, 0.5)  # Center crop
-            )
+        if self._focus == "center":
+            centering = (0.5, 0.5)
         else:
-            image_pil = self.random_zoom_crop(image=image_pil)
+            centering = (random.uniform(0, 1), random.uniform(0, 1))  # random centering
 
-        if self._extend:
-            extended_pil = PIL.Image.new(mode="RGB", size=(self._extend_width, self._extend_height), color=(0, 0, 0))
-            offset = ((self._extend_width - image_pil.width) // 2, (self._extend_height - image_pil.height) // 2)
-            extended_pil.paste(image_pil, offset)
-            image_pil = extended_pil
-
-        # If anamorphic resolution, resize to network resolution
-        if self._anamorphic:
-            image_pil = image_pil.resize(self._resolution)
+        image_pil = self.dynamic_fit(
+            image_pil,
+            size=self._crop_size,
+            final_size=self._resolution,
+            max_bleed=self._max_bleed,
+            centering=centering
+        )
 
         image_np = np.array(image_pil).transpose(2, 0, 1)  # HWC => CHW
         return image_np
@@ -164,25 +153,6 @@ class DynamicDataset(Dataset):
         labels = labels.astype({1: np.int64, 2: np.float32}[labels.ndim])
         return labels
 
-    def random_zoom_crop(self, image: PIL.Image):
-        # If image too small to zoom-in, do simple random crop without zooming
-        if image.width <= self._crop_size[0] or image.height <= self._crop_size[1]:
-            centering = (random.uniform(0, 1), random.uniform(0, 1))  # random centering
-            image_cropped = PIL.ImageOps.fit(image, size=self._crop_size, method=PIL.Image.LANCZOS, centering=centering)
-            return image_cropped
-
-        # Image is big enough
-        max_window_width, max_window_height = self.get_max_window_size(image, ratio=self._crop_size[0] / self._crop_size[1])
-        scale = random.uniform(max(self._crop_size[0] / max_window_width, self._scale), 1)  # Random scale
-        window_width = round(scale * max_window_width)
-        window_height = round(scale * max_window_height)
-        left = random.randint(0, image.width - window_width)
-        top = random.randint(0, image.height - window_height)
-        crop_box = (left, top, left + window_width, top + window_height)
-        image_cropped = image.resize(size=self._crop_size, resample=PIL.Image.LANCZOS, box=crop_box)
-
-        return image_cropped
-
     @staticmethod
     def get_max_window_size(image: PIL.Image, ratio: float):
         """ Returns maximum size (width, height) of inscribed rectangle with specific aspect ratio """
@@ -197,7 +167,7 @@ class DynamicDataset(Dataset):
 
     @staticmethod
     def decode_resolution(resolution: str):
-        """ Converts string like '1024x1024' to (width, height) """
+        """ Converts string like '1024x1024' or just '1024' to (width, height) """
         result = re.match("(\d+)\D*(\d+)?", resolution)
         if result:
             dd_width, dd_height = result.groups()
@@ -213,7 +183,7 @@ class DynamicDataset(Dataset):
         Photoshop-like autocontrast.
 
         This is taken from PIL 8.2.0 which is curently not supported in Colab. Once Colab upgrades to Python 3.8+,
-        we will start using PIL.Imageops.autocontrast(..., preserve_tone=True) instead and this method will be removed.
+        I will start using PIL.Imageops.autocontrast(..., preserve_tone=True) instead and this method will be removed.
         """
         histogram = image.convert("L").histogram(mask)  # Always preserve tones
 
@@ -281,3 +251,76 @@ class DynamicDataset(Dataset):
 
         lut = lut + lut + lut
         return image.point(lut)
+
+    @staticmethod
+    def dynamic_fit(image, size=(1024, 1024), final_size=None, max_bleed=0.0, centering=(0.5, 0.5)):
+        """
+        Returns a resized and cropped version of the image, cropped to the
+        requested aspect ratio and size.
+
+        This function is derived from the fit() function by Kevin Cazabon from the PIL library:
+        https://pillow.readthedocs.io/en/stable/_modules/PIL/ImageOps.html#fit
+
+        :param final_size: Finally resize image to different size than has been calculated. For anamoprhic purpose.
+        :param image: The image to resize and focus.
+        :param size: The requested output size in pixels, given as a
+                     (width, height) tuple.
+        :param max_bleed: How much can we crop into the image (use 0.01 for one percent).
+        :param centering: Control the cropping position.  Use (0.5, 0.5) for
+                          center cropping (e.g. if cropping the width, take 50% off
+                          of the left side, and therefore 50% off the right side).
+                          (0.0, 0.0) will focus from the top left corner (i.e. if
+                          cropping the width, take all of the focus off of the right
+                          side, and if cropping the height, take all of it off the
+                          bottom).  (1.0, 0.0) will focus from the bottom left
+                          corner, etc. (i.e. if cropping the width, take all of the
+                          focus off the left side, and if cropping the height take
+                          none from the top, and therefore all off the bottom).
+        :return: An image.
+        """
+
+        # bleed_horizontal = random.uniform(0, max_bleed)
+        # bleed_vertical = random.uniform(0, max_bleed)
+        # bleed_pixels = (bleed_vertical * image.size[0], bleed_horizontal * image.size[1])
+
+        # Random number of pixels to trim off on Top and Bottom, Left and Right
+        bleed_pixels = (
+            random.uniform(0, max_bleed) * image.size[0],
+            random.uniform(0, max_bleed) * image.size[1]
+        )
+
+        live_size = (
+            image.size[0] - bleed_pixels[0] * 2,
+            image.size[1] - bleed_pixels[1] * 2,
+        )
+
+        # calculate the aspect ratio of the live_size
+        live_size_ratio = live_size[0] / live_size[1]
+
+        # calculate the aspect ratio of the output image
+        output_ratio = size[0] / size[1]
+
+        # figure out if the sides or top/bottom will be cropped off
+        if live_size_ratio == output_ratio:
+            # live_size is already the needed ratio
+            crop_width = live_size[0]
+            crop_height = live_size[1]
+        elif live_size_ratio >= output_ratio:
+            # live_size is wider than what's needed, focus the sides
+            crop_width = output_ratio * live_size[1]
+            crop_height = live_size[1]
+        else:
+            # live_size is taller than what's needed, focus the top and bottom
+            crop_width = live_size[0]
+            crop_height = live_size[0] / output_ratio
+
+        # make the focus
+        crop_left = bleed_pixels[0] + (live_size[0] - crop_width) * centering[0]
+        crop_top = bleed_pixels[1] + (live_size[1] - crop_height) * centering[1]
+        crop = (crop_left, crop_top, crop_left + crop_width, crop_top + crop_height)
+
+        if not final_size:
+            final_size = size
+
+        # Crop and resize image to final size
+        return image.resize(final_size, resample=PIL.Image.LANCZOS, box=crop)

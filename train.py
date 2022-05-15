@@ -111,10 +111,9 @@ def init_dataset_kwargs(opts):
                 xflip=opts.mirror,
                 yflip=opts.mirrory,
                 resolution=opts.dd_res,
-                extend=opts.dd_extend,
                 anamorphic=opts.dd_anamorphic,
-                crop=opts.dd_crop,
-                scale=opts.dd_scale,
+                focus=opts.dd_focus,
+                max_bleed=opts.dd_max_bleed,
                 autocontrast_probability=opts.dd_ac_prob,
                 autocontrast_max_cutoff=opts.dd_ac_cutoff,
             )
@@ -186,13 +185,12 @@ def locate_latest_pkl(outdir: str):
 
 # Dynamic Dataset options
 @click.option('--dd',           help='Tells Stylegan to use DynamicDataset instead of the original ImageFolderDataset', is_flag=True)
-@click.option('--dd-res',       help='The desired images resolution (e.g. --dd-res=1024x1024)', type=str, default="1024x1024", show_default=True)
-@click.option('--dd-crop',      help='Cropping type',                                           type=click.Choice(['center', 'random']), default="center", show_default=True)
-@click.option('--dd-scale',     help='Scale/zoom factor. 1 = no zoom, 0.8 = crop up to 20%',    type=click.FloatRange(min=0.5, max=1), default=0.8, show_default=True)
-@click.option("--dd-ac-prob",   help="Autocontrast probability (default: %(default)s)",         type=click.FloatRange(min=0, max=1), default=0.8, show_default=True)
+@click.option('--dd-res',       help='The desired images resolution (default: %(default)s)',              type=str, default="1024x1024", show_default=True)
+@click.option('--dd-focus',     help='Focus place while cropping the image (default: %(default)s)',       type=click.Choice(['center', 'random']), default="random", show_default=True)
+@click.option('--dd-max-bleed', help='How much can we crop into the image (use 0.01 for one percent).',   type=click.FloatRange(min=0, max=0.5), default=0.1, show_default=True)
+@click.option("--dd-ac-prob",   help="Autocontrast probability (default: %(default)s)",                   type=click.FloatRange(min=0, max=1), default=0.8, show_default=True)
 @click.option("--dd-ac-cutoff", help="Max. percent to cut off from the histogram (default: %(default)s)", type=float, default=2, show_default=True)
-@click.option('--dd-extend',    help='EXPERIMENTAL: Extend background to another resolution (e.g. --dd-extend=1024x1024)', type=str)
-@click.option('--dd-anamorphic',help='EXPERIMENTAL: Allows to train Extend background to another resolution (e.g. --dd-anamorphic=1280x720 --dd-res=1024x1024)', type=str)
+@click.option('--dd-anamorphic',help='Allows to train in non-square resolution using "anamorphic lens" (e.g. --dd-anamorphic=1280x720 --dd-res=1024x1024)', type=str)
 
 # Misc settings.
 @click.option('--desc',         help='String to include in result dir name', metavar='STR',     type=str)
